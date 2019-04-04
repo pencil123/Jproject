@@ -9,6 +9,7 @@ import javax.annotation.Resource;
 /**数据库类
  * @author lyzhang
  * @since 2019/4/4 12:20
+ * @错误：方法返回ResultSET 类型数据之前，已经将数据库连接断开。
  */
 public class MysqlConn {
   @Resource public static Connection conection;

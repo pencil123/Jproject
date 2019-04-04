@@ -1,5 +1,7 @@
 package com.good.month4;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
@@ -11,13 +13,28 @@ import java.sql.SQLException;
  */
 public class Business {
 
-
   public static void main(String[] args) {
     /*主函数
      * */
-    MysqlConn conn = new MysqlConn();
+    Connection conn = null;
+    try {
+      conn = NewMySQLConn.getConn();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
     String sql = "select user_name,password from t_user";
-    ResultSet rs = conn.executeQuery(sql);
+    PreparedStatement preS = null;
+    try {
+      preS = conn.prepareStatement(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+    ResultSet rs = null;
+    try {
+      rs = preS.executeQuery(sql);
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
     while (true) {
       try {
         if (!rs.next()) {
