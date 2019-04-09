@@ -20,7 +20,7 @@ public class MysqlConn {
     try {
       conection =
           DriverManager.getConnection(
-              "jdbc:mysql://12.168.3.75:3306/test_lyzhang", "dba", "dba?ylh79ak");
+              "jdbc:mysql://12.168.3.75:3306/test_lyzhang", "root", "password");
     } catch (Exception e) {
       e.printStackTrace();
     }
