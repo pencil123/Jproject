@@ -1,0 +1,84 @@
+server:
+  port: 5000
+spring:
+  cloud:
+  config:
+      server:
+        git:
+          uri: ssh://demo-cloud-config-server@12.168.3.18:29418/ylh-dev-config-files
+          username: demo-cloud-config-server
+          password: 63H770GzVheyqdPUoSAJ
+          search-paths: '{application}'
+          force-pull: true
+          clone-on-start: true
+          ignore-local-ssh-settings: true
+          private-key: |
+                       -----BEGIN RSA PRIVATE KEY-----
+                       MIIEogIBAAKCAQEA5WNZ693BCOPFLphtCo2rTqembB0tFIaj9iUTMVi6u/tQIJHG
+                       RGvQ54V+r/4NSX8cXFIzuKUfNcVtCQcQRhQ1p9lEJ4AnSR53FtnHch9CeoBlgLbW
+                       05JAOg6+NGFvMTKpHswtXS3tYCk0CZUdHKDpD8hHrKtDIDTrW55lCcDZhRb8GyvV
+                       iRtqpHgfxdiIWarwHZBBpMqvm8G+c4nplHiEDGAbcYPFjiM6CTnx6fW+boWK79dZ
+                       +JH2QJSmChzQGDJPvXVIUtbHJYGGvp9/Zwi/j/sD4YMo+koR/kbYWI9VS4jKQTQ3
+                       s9gWweCRi/oRpTjPEZD1ZZ8ViFkPrdV/t+kaYwIDAQABAoIBAHDEaL5VY8JVBuij
+                       MmfPwXmHXX8k0LaYgh5Nl6PYtOQY5gk84LVeM3K948vtHucUwAJ6vsZ1FmS+y512
+                       hX+OC9qaKrEohSei/HSVV0E5MNs8J6ohOHcGHODtwn/JrnoHJ7DmOx7lpx5w4w4a
+                       6hba2/hQQzwVbYh1u4Zs1cr3rXeJKMLDjux6Rj/n+U+T3SE4QXa2zMLymgV2eulj
+                       wv5CjDEDtce3UIvue59ihVq2XQ/CmD2AcFwI5K56xZLP7KtJHqCc5NscrJKKlxvP
+                       FzgxR60w3vUv5Gq2AH1XVA5pJqrWKL1VTXWF9tIxTpOCObj7T7qWVaAxcDbkQBER
+                       xcfMTvECgYEA+ezo+pZQNjFcVjj+8skYlndRESMuu5r15WXhjVrrzBYqAwcLCaHa
+                       vgyeArC4Vi+hxHbqqNLqHW0jWsf5Fb7ukmUoj1OLfWeqWGlmi7lWJJ2bryOizNAp
+                       Md727CuhAZp+K+EERddOCHcZ5oYuCjrVgvmE+BLonwoB/wlaIaxfmSUCgYEA6van
+                       RxNUnW3UqYAIKETF4bTtv50HCjQPHVdXoI8hXceV8rGH4HbNoPvYXWg31LzRkDea
+                       qPF1DSFxjD4z0IIPdN1llOASEH1n/UGMAoLdj8l6hUZM2yaQulZEa/aKM03m+hM5
+                       J9rkIKFCA3xHh57aq5qlBnj4ummEqquuoJpjIucCgYBcFK9Z9Bule9Y7ZlB4fyLx
+                       /Q//Mmk7ccJ7PGg3vnH2BYyBBQ1KBTokn11wPFAOYQpG6lFW1i6vnNBT2C2rl2cq
+                       xN6GwA86qwEWBe9kN2rHntIHWyfWMjObTjzHkuOFRbiKziLW4Ja9g7QlPPaliju0
+                       P95/z+epAPTvVDDDC1FFiQKBgBn/DkTz45HDfBsA2mYyLb6qOP/RTN0ZI274oe5W
+                       x7dLhNCkScdQ/bFJDAhRppO4DGura0Yz6OJ6B8kffLYeHb2tXTbaj8UZSu8fWHFS
+                       r1bgUNj8DTbWDn8/WjSjw2invt1+UP2S31io3tfp4TQlJEaGRqnvqn1dfVswwZJt
+                       YniTAoGAXWqBMQ1dtaVKIs91Pe1OPMcEr6nE2hEscRM0+FdCEpQ242Uoubpf3jDN
+                       uahz8wXK9STKvyGcJFAeRhJOI1jF/IyF+dxm6wjK0uh7k6ogQyBFhef6p1WLYdHF
+                       9qNKJ8Ipbj4qruCItUamFdhKFSyVQpthutQVzXCbe2MdXtZQYRc=
+                       -----END RSA PRIVATE KEY-----
+  rabbitmq:
+    host: 12.168.3.20
+    port: 5672
+    username: guest
+    password: ENC(f7U9dOf/olgkiH9HtVWkrQ==)
+#    password: guest
+  sleuth:
+    sampler:
+      probability: 0.1f
+  zipkin:
+    base-url: http://12.168.3.32:9411/
+    sender:
+      type: KAFKA
+    kafka:
+      toppic: zipkin
+      zookeeper: 12.168.3.32:2181
+  security:
+    user:
+      name: admin
+      password: 123456
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: ['*']
+
+logging:
+  level:
+    root: info
+    com.yilihuo.demo.cloud: debug
+    org.springframework.cloud: info
+    org.springframework.boot: info
+    org.springframework.web: info
+  pattern:
+    console: '%date{HH:mm:ss.SSS} [%thread] %highlight(%-5level) %cyan([%c{0}-%line]) %red([%mdc{requestId:-config-server}]) - <%m>%n'
+#  fail-on-error: false
+#  rsa:
+#    strong: true
+#    salt: jsh
+#    algorithm: default
