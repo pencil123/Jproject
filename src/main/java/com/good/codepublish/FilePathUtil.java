@@ -14,7 +14,7 @@ public class FilePathUtil {
 
   public static void main(String[] args) {
     //
-    File parrentFolder = new File("D:\\codes");
+    File parrentFolder = new File("D:\\git\\jsh");
     LinkedList<File> paths = new LinkedList<>();
     paths.add(parrentFolder);
     logger.debug(parrentFolder.getName());
@@ -26,18 +26,36 @@ public class FilePathUtil {
     }
   }
 
+/**
+ *  遍历文件子目录方法
+*/
   public  static LinkedList getSubFolders(File folderPath) {
-
     LinkedList<File> list = new LinkedList<>();
     if (folderPath.exists()) {
       File[] files = folderPath.listFiles();
       for (File file2 : files) {
-        if (file2.isDirectory()) {
+        if ( isGitFolder(file2)) {
           list.add(file2);
         }
       }
     }
     return list;
+  }
+
+/**
+ *判断目录下是否有.git文件夹
+  */
+  public static boolean isGitFolder(File folderPath) {
+     if (folderPath.exists()) {
+          File gitFolder = new File(folderPath.getParent() + "/" + folderPath.getName() + "/.git");
+          if (gitFolder.isDirectory()) {
+              return true;
+          }else {
+              return false;
+          }
+     }else {
+          return false;
+     }
   }
 
 }
