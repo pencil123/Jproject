@@ -81,6 +81,8 @@ public class MergeChanges {
                         setMessage("Merged changes").
                         call();
         System.out.println("Merge-Results for id: " + mergeBase + ": " + merge);
+        System.out.println(merge.getMergeStatus().isSuccessful());
+
         for (Map.Entry<String,int[][]> entry : merge.getConflicts().entrySet()) {
           System.out.println("Key: " + entry.getKey());
           for(int[] arr : entry.getValue()) {

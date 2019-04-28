@@ -1,8 +1,7 @@
 package com.blogs;
 
 import jdk.nashorn.internal.objects.Global;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.LogCommand;
+import org.eclipse.jgit.api.*;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
@@ -15,8 +14,10 @@ import org.eclipse.jgit.transport.FetchResult;
 import javax.swing.text.html.HTML;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author lyzhang
@@ -70,16 +71,23 @@ public class GitUtils {
     int i;
     int j;
     TagsUtils tmp;
-    for (i=0;i<sizeRef -1;i++){
-  //    System.out.println(tagsList.get(i).timestamp);
-      for (j=i +1 ;j<sizeRef;j++){
+    for (i = 0;i < sizeRef - 1;i++) {
+      //System.out.println(tagsList.get(i).timestamp);
+      for (j = i + 1;j < sizeRef;j++) {
         if (tagsList.get(j).timestamp == tagsList.get(i).timestamp &&
-        tagsList.get(j).name != tagsList.get(i).name){
-          String tagsName = tagsList.get(j).name + "--" + tagsList.get(i).name;
-          tagsList.get(j).name = tagsName;
-          tagsList.get(i).name = tagsName;
+        !tagsList.get(j).name.equals(tagsList.get(i).name)) {
+          //tag 如果以#结束，说明此Commit 上打了过多Tag
+          String tagsName1 = tagsList.get(j).name;
+          String tagsName2 = tagsList.get(i).name;
+          if (tagsName1.compareTo(tagsName2) > 0) {
+            tagsList.get(i).name = tagsName1 + "#";
+            tagsList.get(j).name = tagsName1 + "#";
+          } else {
+            tagsList.get(i).name = tagsName2 + "#";
+            tagsList.get(j).name = tagsName2 + "#";
+          }
         }
-        if (tagsList.get(j).timestamp > tagsList.get(i).timestamp){
+        if (tagsList.get(j).timestamp > tagsList.get(i).timestamp) {
           tmp = tagsList.get(i);
           tagsList.set(i,tagsList.get(j));
           tagsList.set(j,tmp);
@@ -90,33 +98,90 @@ public class GitUtils {
     return tagsList.get(0);
   }
 
-  public boolean branchPull(String branchName) throws GitAPIException,IOException{
+  public boolean branchPull(String branchName) throws GitAPIException {
     List<Ref> call = this.git.branchList().call();
     boolean branchExist = false;
     for (Ref ref : call) {
       //System.out.println("Branch: " + ref + " " + ref.getName() + " " + ref.getObjectId().getName());
-      if (ref.getName().equals("refs/heads/" + branchName)){
+      if (ref.getName().equals("refs/heads/" + branchName)) {
         branchExist = true;
       }
     }
-    if (branchExist){
+    if (branchExist) {
       this.git.checkout().setName(branchName).call();
-    } else{
+    } else {
       return false;
     }
-    if (branchExist){
-      //this.git.fetch().setCheckFetchedObjects(true).call();
-      this.git.pull().call();
-     // System.out.println("pull method");
+    //this.git.fetch().setCheckFetchedObjects(true).call();
+    PullResult pull = this.git.pull().call();
+    if (pull.isSuccessful()) {
+      /*System.out.println(pull.getFetchResult(true).call());
+      System.out.println(pull.getMergeResult().getConflicts());
+      System.out.println(pull.isSuccessful());*/
+      return true;
+    } else {
+      return false;
     }
-    //System.out.println(branchExist);
-    return true;
-
-
-/*      FetchResult result = this.git.fetch().setCheckFetchedObjects(true).call();
-      System.out.println("Messages: " + result.getMessages());*/
   }
 
+  public boolean mergeBranch(String fromBranch,String toBranch) throws IOException, GitAPIException {
+    List<Ref> call = this.git.branchList().call();
+    int branchExist =0;
+    for (Ref ref : call) {
+      //System.out.println("Branch: " + ref + " " + ref.getName() + " " + ref.getObjectId().getName());
+      if (ref.getName().equals("refs/heads/" + toBranch)) {
+        branchExist += 1;
+      }
+      if (ref.getName().equals("refs/heads/" + fromBranch)) {
+        branchExist += 1;
+      }
+    }
+    //checkout 到目标分支
+    if (branchExist == 2) {
+      this.git.checkout().setName(toBranch).call();
+    } else {
+      return false;
+    }
+    //合并分支
+    ObjectId mergeBase = this.repository.resolve(fromBranch);
+    // perform the actual merge, here we disable FastForward to see the
+    // actual merge-commit even though the merge is trivial
+    MergeResult merge = this.git.merge()
+            .include(mergeBase)
+            .setCommit(true)
+            .setFastForward(MergeCommand.FastForwardMode.NO_FF)
+            //.setSquash(false)
+            .setMessage("Merged changes")
+            .call();
+
+    if (merge.getMergeStatus().isSuccessful()) {
+      return true;
+    } else {
+      System.out.println(merge.getMergeStatus().toString());
+      for (Map.Entry<String,int[][]> entry : merge.getConflicts().entrySet()) {
+        System.out.println("Key: " + entry.getKey());
+        for(int[] arr : entry.getValue()) {
+          System.out.println("value: " + Arrays.toString(arr));
+        }
+      }
+      return false;
+    }
+
+  /*  getMergeStatus()
+      ABORTED
+              ALREADY_UP_TO_DATE
+      CHECKOUT_CONFLICT
+      Status representing a checkout conflict, meaning that nothing could be merged, as the pre-scan for the trees already failed for certain files (i.e.
+              CONFLICTING
+      FAILED
+              FAST_FORWARD
+      FAST_FORWARD_SQUASHED
+              MERGED
+      MERGED_NOT_COMMITTED
+              MERGED_SQUASHED
+      MERGED_SQUASHED_NOT_COMMITTED
+              NOT_SUPPORTED*/
+  }
 
   public void getLog()  throws GitAPIException,IOException{
     Iterable<RevCommit> logs = this.git.log().all().call();
