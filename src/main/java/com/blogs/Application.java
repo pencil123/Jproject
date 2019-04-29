@@ -15,12 +15,22 @@ import java.util.LinkedList;
 public class Application {
   public static void main(String[] args) throws IOException, GitAPIException, IOException, SAXException, ParserConfigurationException {
 
-    //LinkedList<File> list = FileUtils.getSubFolders(new File("D:\jsh\jsh\jsh-service-log-provider"));
-    File file = new File("D:\\jsh\\jsh\\jsh-service-log-provider");
-    PomUtils obj = new PomUtils(file);
-    System.out.println(obj.getVersion());
-/*    for (File file:list) {
-      GitUtils gu = new GitUtils(file);
+    LinkedList<File> list = FileUtils.getSubFolders(new File("D:\\git\\jsh-bak"));
+    //File file = new File("D:\\jsh\\jsh\\jsh-service-log-provider");
+
+    for (File file:list) {
+
+      File pomFile = new File(file.getAbsolutePath() +  System.getProperty("file.separator") + "pom.xml");
+      if (pomFile.exists()) {
+        PomUtils obj = new PomUtils(pomFile);
+        System.out.println(file.getName());
+        System.out.println(file.getName() + " ---"  +obj.getDependency());
+      } else {
+        System.out.println(file.getName() + " is not maven project");
+      }
+      break;
+    }
+/*      GitUtils gu = new GitUtils(file);
       System.out.println("Project 获取最新的Tag 信息");
       System.out.println(file.getName() + "----" + gu.getLastTag().name);
 
