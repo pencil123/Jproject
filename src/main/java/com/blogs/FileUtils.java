@@ -43,4 +43,13 @@ public class FileUtils {
     }
     return list;
   }
+
+  public static Boolean isMaven(File folderPath) {
+    File pomFile = new File(folderPath.getAbsolutePath() +  System.getProperty("file.separator") + "pom.xml");
+    if (pomFile.exists()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
 }
