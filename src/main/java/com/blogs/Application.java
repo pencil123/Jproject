@@ -22,6 +22,12 @@ public class Application {
   File parrentPath;
   PomUtils pomObj;
 
+  class Dependency {
+    protected String name;
+    //0：一般工程，1：库工程，2：修改pom的工程
+    protected int type;
+    protected String version;
+  }
   public Application(String parrentPath) throws SQLException {
     this.mysqlAPI = new JdbcUtils();
     this.parrentPath = new File(parrentPath);
@@ -168,33 +174,56 @@ public class Application {
           this.mysqlAPI.executeSql(stringSQL);
         }
       }
-
     }
     //projects_dependencies
 
     return true;
   }
 
-  public Map<String,String> listPublish() throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
-    Map<String,String> publisher = new HashMap<String,String>();
+  public boolean listPublish() throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
+    Map<String,Dependency> publisher = new HashMap<String,Dependency>();
     String stringSQL = "select name,isChild,dev from publish_projects_list where dev like \"%-SNAPSHOT\"";
     ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
+    Dependency depenClass;
     while (proSet.next()) {
+      depenClass = new Dependency();
       //System.out.println("发现工程：" + proSet.getString("name") + proSet.getString("dev"));
-      publisher.put(proSet.getString("name"),proSet.getString("dev"));
       if (proSet.getBoolean("isChild")) {
+        depenClass.type =1;
+        depenClass.version = proSet.getString("dev");
+        publisher.put(proSet.getString("name"),depenClass);
         stringSQL = String.format("select name from projects_dependencies where %s is not null",proSet.getString("name").replace("-","_"));
         System.out.println("发现库工程：" + proSet.getString("name"));
         ResultSet depPro = this.mysqlAPI.executeQuery(stringSQL);
         while (depPro.next()) {
           if (!publisher.containsKey(depPro.getString("name"))) {
-            publisher.put(depPro.getString("name"),"not Setting");
-            //System.out.println(depPro.getString("name"));
+            depenClass = new Dependency();
+            depenClass.type =2;
+            publisher.put(depPro.getString("name"),depenClass);
           }
         }
+      } else {
+        depenClass.type =0;
+        depenClass.version = proSet.getString("dev");
+        publisher.put(proSet.getString("name"),depenClass);
       }
     }
-    return publisher;
+    for (Map.Entry<String,Dependency> entry:publisher.entrySet()) {
+      if (entry.getValue().type !=2 ) {
+        String version = entry.getValue().version.replace("-SNAPSHOT","");
+        stringSQL = String.format("update publish_projects_list set newtag = \"%s\",newtag_type=%d where name=\"%s\"",version,entry.getValue().type,entry.getKey());
+        System.out.println(stringSQL);
+      } else {
+        stringSQL = String.format("select dev from publish_projects_list where name = \"%s\"",entry.getKey());
+        ResultSet rs = this.mysqlAPI.executeQuery(stringSQL);
+        rs.next();
+        String newVersion = Utils.versionAddOne(rs.getString("dev"));
+        stringSQL = String.format("update publish_projects_list set newtag = \"%s\",newtag_type=%s where name=\"%s\"",newVersion,2,entry.getKey());
+        System.out.println(stringSQL);
+      }
+      this.mysqlAPI.executeSql(stringSQL);
+    }
+    return true;
   }
 
   public static void main(String[] args) throws IOException, GitAPIException, IOException, SAXException, ParserConfigurationException, TransformerException, SQLException {

@@ -32,11 +32,7 @@ public class Publisher {
         //appObj.updateProjectsDependencies();
 
         //输出要发版的工程
-        Map<String,String> listPro = appObj.listPublish();
-        for (Map.Entry<String,String> entry:listPro.entrySet()) {
-            System.out.println("发现工厂： " + entry.getKey() + " -- " + entry.getValue());
-        }
-
+         appObj.listPublish();
 
     }
 }
