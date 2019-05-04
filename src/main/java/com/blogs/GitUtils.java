@@ -110,7 +110,11 @@ public class GitUtils {
     if (branchExist) {
       this.git.checkout().setName(branchName).call();
     } else {
-      return false;
+      git.branchCreate()
+              .setName(branchName)
+              .setStartPoint("origin/" + branchName)
+              .call();
+      this.git.checkout().setName(branchName).call();
     }
     //this.git.fetch().setCheckFetchedObjects(true).call();
     PullResult pull = this.git.pull().call();

@@ -23,9 +23,32 @@ public class JdbcUtils {
     }
 
     public ResultSet executeQuery(String sql) throws SQLException {
-        System.out.println(connection.isClosed());
+        //System.out.println(connection.isClosed());
         PreparedStatement prst = connection.prepareStatement(sql);
         rs = prst.executeQuery();
         return rs;
+    }
+
+    public boolean execute(String sql) throws SQLException{
+        prst = connection.prepareStatement(sql);
+        prst.executeUpdate();
+        return true;
+    }
+
+    public int count(String sql) throws SQLException {
+        prst = connection.prepareStatement(sql);
+        ResultSet rs = prst.executeQuery();
+        return rs.getRow();
+    }
+
+    public boolean isExistColumn (ResultSet rs,String columnNmae) {
+        try {
+            if (rs.findColumn(columnNmae) > 0) {
+                return true;
+            }
+        } catch (SQLException e) {
+            return false;
+        }
+        return false;
     }
 }
