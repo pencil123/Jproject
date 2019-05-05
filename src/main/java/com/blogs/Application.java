@@ -2,13 +2,13 @@ package com.blogs;
 
 import com.sun.xml.internal.ws.wsdl.parser.MemberSubmissionAddressingWSDLParserExtension;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.xml.sax.SAXException;
-
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Array;
+import org.xml.sax.SAXException;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
@@ -18,9 +18,9 @@ import java.util.*;
  * @since 2019/4/25 19:55
  */
 public class Application {
-  JdbcUtils mysqlAPI;
-  File parrentPath;
-  PomUtils pomObj;
+  private JdbcUtils mysqlAPI;
+  private File parrentPath;
+  private PomUtils pomObj;
 
   class Dependency {
     protected String name;
@@ -67,7 +67,6 @@ public class Application {
     String version;
     File projectPath;
     File pomFile;
-    LinkedList<File> list = FileUtils.getSubFolders(this.parrentPath);
     ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
     while (proSet.next()) {
       projectName = proSet.getString("name");
