@@ -38,6 +38,7 @@ public class PomUtils {
     f = pomFile;
     xmldoc = builder.parse(pomFile);
   }
+
   public static void main(String[] args) throws ParserConfigurationException, IOException, SAXException {
     File f = new File("pombak.xml");
     //创建一个文档解析器工厂
@@ -115,22 +116,24 @@ public class PomUtils {
     //System.out.println(nodesDepend.getLength());
     Node dependency = nodesDepend.item(0).getFirstChild();
     while (dependency != null) {
-      dependencies.put(dependency.getNodeName(),dependency.getTextContent());
+      dependencies.put(dependency.getNodeName().replace(".version",""),dependency.getTextContent());
       dependency = dependency.getNextSibling();
     }
     return dependencies;
   }
 
-  public static boolean setDependency (Map<String,String> dependencies) throws TransformerException{
+  public static boolean setDependency (String projectName,String projectVersion) throws TransformerException{
     NodeList nodesDepend = xmldoc.getElementsByTagName("properties");
+    projectName = projectName + ".version";
     //System.out.println(nodesDepend.getLength());
     Node dependency = nodesDepend.item(0).getFirstChild();
     boolean change = false;
     while (dependency != null) {
       String elementName = dependency.getNodeName();
-      if (dependencies.containsKey(elementName)) {
-        dependency.setTextContent(dependencies.get(elementName));
+      if (elementName.equals(projectName)) {
+        dependency.setTextContent(projectVersion);
         change = true;
+        break;
       }
       dependency = dependency.getNextSibling();
     }

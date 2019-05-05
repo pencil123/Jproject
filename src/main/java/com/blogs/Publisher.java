@@ -22,6 +22,9 @@ public class Publisher {
         //appObj.checkoutBranch("master");
         //appObj.checkoutBranch("dev");
 
+        //更新工程的tags列表到数据库 project_tags_list
+          //appObj.updateTags();
+
         //将工程的最新tag,master分支和dev分支中的version 写入到数据库publish_projects_list表
         //appObj.updateVersion();
 
@@ -32,7 +35,10 @@ public class Publisher {
         //appObj.updateProjectsDependencies();
 
         //输出要发版的工程
-         appObj.listPublish();
+         //appObj.listPublish();
+
+      //更新DEV 分支中的POM文件，工程Version 和依赖工程的version信息
+        appObj.updateDevPom();
 
     }
 }

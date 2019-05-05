@@ -38,6 +38,7 @@ public class JdbcUtils {
     public int count(String sql) throws SQLException {
         prst = connection.prepareStatement(sql);
         ResultSet rs = prst.executeQuery();
+        rs.last();
         return rs.getRow();
     }
 

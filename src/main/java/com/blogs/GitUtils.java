@@ -14,10 +14,7 @@ import org.eclipse.jgit.transport.FetchResult;
 import javax.swing.text.html.HTML;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author lyzhang
@@ -41,6 +38,15 @@ public class GitUtils {
       this.walk = new RevWalk(repository);
       this.repository = repository;
     }
+  }
+  public List<String> getAllTags() throws GitAPIException,IOException {
+    List<Ref> call;
+    List<String> tags = new ArrayList<String>();
+    call = this.git.tagList().call();
+    for (Ref ref :call ) {
+      tags.add(ref.getName().split("/")[2]);
+    }
+    return tags;
   }
 
   public TagsUtils getLastTag() throws GitAPIException,IOException {

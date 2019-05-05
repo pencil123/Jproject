@@ -1,12 +1,13 @@
 package com.blogs;
 
-import com.sun.xml.internal.ws.wsdl.parser.MemberSubmissionAddressingWSDLParserExtension;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.TransformerException;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Array;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
+import org.eclipse.jgit.api.errors.GitAPIException;
+
 import org.xml.sax.SAXException;
 
 import java.sql.ResultSet;
@@ -33,7 +34,7 @@ public class Application {
     this.parrentPath = new File(parrentPath);
   }
 
-  public boolean builderProjects() throws  SQLException{
+  public boolean builderProjects() {
     String stringSQL;
     LinkedList<File> list = FileUtils.getSubFolders(this.parrentPath);
     for (File path : list) {
@@ -42,8 +43,13 @@ public class Application {
       } else {
         stringSQL = String.format("insert into publish_projects_list (name,isMaven) values(\"%s\",%d)",path.getName(),0);
       }
+      try {
       this.mysqlAPI.executeSql(stringSQL);
+      } catch (SQLException e) {
+        continue;
+      }
     }
+    System.out.println("true");
     return true;
   }
 
@@ -56,8 +62,12 @@ public class Application {
       projectName = proSet.getString("name");
       projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
       GitUtils objGit = new GitUtils(projectPath);
-      objGit.branchPull(branchName);
+      if (!objGit.branchPull(branchName)) {
+        System.out.println("project :" + projectName + "pull false");
+        return false;
+      }
     }
+    System.out.println("true");
     return true;
   }
 
@@ -169,7 +179,6 @@ public class Application {
         dependencyStringName = dependencyStringName.replace("-","_");
         if (projects.contains(dependencyStringName)) {
           stringSQL = String.format("update projects_dependencies set %s = \"%s\" where name=\"%s\"",dependencyStringName,entry.getValue(),proSet.getString("name"));
-          System.out.println(stringSQL);
           this.mysqlAPI.executeSql(stringSQL);
         }
       }
@@ -181,7 +190,9 @@ public class Application {
 
   public boolean listPublish() throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
     Map<String,Dependency> publisher = new HashMap<String,Dependency>();
-    String stringSQL = "select name,isChild,dev from publish_projects_list where dev like \"%-SNAPSHOT\"";
+    String stringSQL = "update publish_projects_list set newtag =null,newtag_type=null";
+    this.mysqlAPI.executeSql(stringSQL);
+    stringSQL = "select name,isChild,dev from publish_projects_list where dev like \"%-SNAPSHOT\"";
     ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
     Dependency depenClass;
     while (proSet.next()) {
@@ -210,6 +221,11 @@ public class Application {
     for (Map.Entry<String,Dependency> entry:publisher.entrySet()) {
       if (entry.getValue().type !=2 ) {
         String version = entry.getValue().version.replace("-SNAPSHOT","");
+        stringSQL = String.format("select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",entry.getKey(),version);
+        while ( this.mysqlAPI.count(stringSQL) > 0 ) {
+          version = Utils.versionAddOne(version);
+          stringSQL = String.format("select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",entry.getKey(),version);
+        }
         stringSQL = String.format("update publish_projects_list set newtag = \"%s\",newtag_type=%d where name=\"%s\"",version,entry.getValue().type,entry.getKey());
         System.out.println(stringSQL);
       } else {
@@ -217,10 +233,87 @@ public class Application {
         ResultSet rs = this.mysqlAPI.executeQuery(stringSQL);
         rs.next();
         String newVersion = Utils.versionAddOne(rs.getString("dev"));
+        stringSQL = String.format("select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",entry.getKey(),newVersion);
+        while ( this.mysqlAPI.count(stringSQL) > 0 ) {
+          newVersion = Utils.versionAddOne(newVersion);
+          stringSQL = String.format("select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",entry.getKey(),newVersion);
+        }
         stringSQL = String.format("update publish_projects_list set newtag = \"%s\",newtag_type=%s where name=\"%s\"",newVersion,2,entry.getKey());
         System.out.println(stringSQL);
       }
       this.mysqlAPI.executeSql(stringSQL);
+    }
+    return true;
+  }
+
+  public boolean updateTags() throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException {
+    String projectName;
+    File projectPath;
+    String stringSQL = "select name from publish_projects_list";
+    ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
+    while (proSet.next()) {
+      projectName = proSet.getString("name");
+      projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
+      GitUtils objGit = new GitUtils(projectPath);
+      for (String tag : objGit.getAllTags()) {
+        stringSQL = String.format("insert into project_tags_list (name,tag_name) values(\"%s\",\"%s\")",projectName,tag);
+        try {
+          this.mysqlAPI.executeSql(stringSQL);
+        } catch (SQLException e) {
+          continue;
+        }
+      }
+    }
+    System.out.println("工程tags更新至数据表 project_tags_list 完成");
+    return true;
+  }
+
+  public boolean updateDevPom () throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
+    String projectName;
+    String newVersion;
+    Map<String,String> projectAddTag = new HashMap<String,String>();
+    File projectPath;
+    File pomFile;
+    String stringSQL = "select name,newtag,isParrent from publish_projects_list where isMaven =1 and newtag is not null";
+    ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
+    while (proSet.next()) {
+      projectAddTag.put(proSet.getString("name"),proSet.getString("newtag") + "-SNAPSHOT");
+    }
+    proSet.beforeFirst();
+    while (proSet.next()) {
+      projectName = proSet.getString("name");
+      newVersion = proSet.getString("newtag") + "-SNAPSHOT";
+      projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
+      GitUtils objGit = new GitUtils(projectPath);
+      if (!objGit.branchPull("dev")) {
+        System.out.println("project :" + projectName + "dev branch pull false");
+        return false;
+      }
+      pomFile = new File (this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") +
+              projectName + System.getProperty("file.separator") + "pom.xml");
+      pomObj = new PomUtils(pomFile);
+
+      try {
+        pomObj.setVersion(newVersion);
+      } catch (TransformerException e) {
+        System.out.println("project :" + projectName + "update version false");
+        return false;
+      }
+
+      if (proSet.getBoolean("isParrent")) {
+        for (Map.Entry<String,String> entry: pomObj.getDependency().entrySet()) {
+          String dependencyStringName = entry.getKey();
+          if (projectAddTag.containsKey(dependencyStringName)) {
+            System.out.println(dependencyStringName + projectAddTag.get(dependencyStringName));
+            try {
+              pomObj.setDependency(dependencyStringName,projectAddTag.get(dependencyStringName));
+            } catch (TransformerException e) {
+              System.out.println("project :" + projectName + "update subProject" + dependencyStringName + " false");
+              return false;
+            }
+          }
+        }
+      }
     }
     return true;
   }
