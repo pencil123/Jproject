@@ -15,7 +15,7 @@ public class Publisher {
         String parrentPath = "D:\\git\\jsh-bak";
         Application appObj = new Application(parrentPath);
 
-        //遍历代码父目录下的工程目录，并判断是否为Maven工程
+        //遍历代码父目录下的工程目录，并判断是否为Maven工程;用于初始化操作，不能重复执行
         //appObj.builderProjects();
 
         //更新分支的代码
@@ -23,7 +23,7 @@ public class Publisher {
         //appObj.checkoutBranch("dev");
 
         //更新工程的tags列表到数据库 project_tags_list
-          //appObj.updateTags();
+        //appObj.updateTags();
 
         //将工程的最新tag,master分支和dev分支中的version 写入到数据库publish_projects_list表
         //appObj.updateVersion();
@@ -34,11 +34,19 @@ public class Publisher {
         //父工程中POM文件对子工程依赖的Version信息，写入到projects_dependencies表
         //appObj.updateProjectsDependencies();
 
-        //输出要发版的工程
+        //输出要发版的工程；不包含front 前端工程
          //appObj.listPublish();
 
       //更新DEV 分支中的POM文件，工程Version 和依赖工程的version信息
-        appObj.updateDevPom();
+       //appObj.updateDevPom();
 
+       //dev 分支merge到master分支
+      //appObj.branchDevToMaster();
+
+        //Master 分支打tag
+       // appObj.masterTag();
+
+        // push master 分支到远程
+        appObj.pushMaster();
     }
 }

@@ -3,6 +3,7 @@ package com.blogs;
 import jdk.nashorn.internal.objects.Global;
 import org.eclipse.jgit.api.*;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.NoFilepatternException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -10,11 +11,16 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.FetchResult;
+import org.eclipse.jgit.transport.PushResult;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.RemoteRefUpdate;
 
 import javax.swing.text.html.HTML;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+
+import static java.lang.System.in;
 
 /**
  * @author lyzhang
@@ -104,7 +110,21 @@ public class GitUtils {
     return tagsList.get(0);
   }
 
-  public boolean branchPull(String branchName) throws GitAPIException {
+  public boolean createTag(String tagName)throws GitAPIException,IOException {
+    String currentBranch = this.repository.getBranch();
+    if (currentBranch.equals("master")) {
+      Ref tag = this.git.tag().setName(tagName).call();
+      return true;
+    } else {
+      System.out.println("当前分支有问题");
+      return false;
+    }
+  }
+
+  public boolean branchPull(String branchName) throws GitAPIException,IOException {
+    String currentBranch = this.repository.getBranch();
+    git.reset().setMode(ResetCommand.ResetType.HARD).call();
+    System.out.println("强制回滚分支" + currentBranch + "到HEAD");
     List<Ref> call = this.git.branchList().call();
     boolean branchExist = false;
     for (Ref ref : call) {
@@ -125,9 +145,10 @@ public class GitUtils {
     //this.git.fetch().setCheckFetchedObjects(true).call();
     PullResult pull = this.git.pull().call();
     if (pull.isSuccessful()) {
-      /*System.out.println(pull.getFetchResult(true).call());
+      /*      System.out.println(pull.getFetchResult(true).call());
       System.out.println(pull.getMergeResult().getConflicts());
       System.out.println(pull.isSuccessful());*/
+      System.out.println("工程拉取分支" + branchName + "完成");
       return true;
     } else {
       return false;
@@ -161,10 +182,11 @@ public class GitUtils {
             .setCommit(true)
             .setFastForward(MergeCommand.FastForwardMode.NO_FF)
             //.setSquash(false)
-            .setMessage("Merged changes")
+            .setMessage(fromBranch +" merge to " + toBranch)
             .call();
 
     if (merge.getMergeStatus().isSuccessful()) {
+      System.out.println("工程 Merge 完成");
       return true;
     } else {
       System.out.println(merge.getMergeStatus().toString());
@@ -193,11 +215,107 @@ public class GitUtils {
               NOT_SUPPORTED*/
   }
 
+  public boolean getStatus() throws IOException, GitAPIException {
+    Status status = this.git.status().call();
+    boolean ifsuccess = true;
+    if (!status.getAdded().isEmpty()) {
+      System.out.println("Added: " + status.getAdded());
+      ifsuccess =false;
+    }
+    if (!status.getChanged().isEmpty()) {
+      System.out.println("Changed: " + status.getChanged());
+      ifsuccess =false;
+    }
+    if (!status.getConflicting().isEmpty()) {
+      System.out.println("Conflicting: " + status.getConflicting());
+      ifsuccess =false;
+    }
+    if (!status.getConflictingStageState().isEmpty()) {
+      System.out.println("ConflictingStageState: " + status.getConflictingStageState());
+      ifsuccess =false;
+    }
+    if (!status.getMissing().isEmpty()) {
+      System.out.println("Missing: " + status.getMissing());
+      ifsuccess =false;
+    }
+
+/*    System.out.println("IgnoredNotInIndex: " + status.getIgnoredNotInIndex());*/
+
+    if (!status.getModified().isEmpty() ){
+      System.out.println("Modified: " + status.getModified());
+      ifsuccess =false;
+    }
+
+    if (!status.getRemoved().isEmpty()) {
+      System.out.println("Removed: " + status.getRemoved());
+      ifsuccess =false;
+    }
+
+    if (!status.getUntracked().isEmpty()) {
+      System.out.println("Untracked: " + status.getUntracked());
+      ifsuccess =false;
+    }
+
+    if (!status.getUntrackedFolders().isEmpty()) {
+      System.out.println("UntrackedFolders: " + status.getUntrackedFolders());
+      ifsuccess =false;
+    }
+
+    if (ifsuccess) {
+      System.out.println("工程状态OK");
+    } else {
+      System.out.println("工程状态异常");
+    }
+    return ifsuccess;
+  }
+
+  public boolean commitPomChange(String CommitMes) throws NoFilepatternException,GitAPIException {
+    //this.git.commit().setMessage("123").setHookOutputStream();
+        this.git.add()
+            .addFilepattern("pom.xml")
+            .call();
+
+    RevCommit revCommit = this.git.commit()
+            .setMessage(CommitMes)
+            .setInsertChangeId(true)
+            .call();
+
+    Iterable<PushResult> pushResults = this.git.push().setRefSpecs(new RefSpec("HEAD:refs/for/dev%submit")).call();
+    pushResults.iterator();
+    for (PushResult pushResult : pushResults) {
+      for (RemoteRefUpdate update : pushResult.getRemoteUpdates()) {
+        if (!(update.getStatus().toString().equals("OK") | update.getStatus().toString().equals("UP_TO_DATE"))) {
+          System.out.println(update.getStatus() + update.getMessage());
+        }
+      }
+    }
+    return true;
+  }
+
+  public boolean pushMaster()  throws NoFilepatternException,GitAPIException,IOException{
+    String currentBranch = this.repository.getBranch();
+    if (currentBranch.equals("master")) {
+      Iterable<PushResult> pushResults = this.git.push().setRefSpecs(new RefSpec("HEAD:refs/heads/master")).call();
+      pushResults.iterator();
+      for (PushResult pushResult : pushResults) {
+        for (RemoteRefUpdate update : pushResult.getRemoteUpdates()) {
+          if (!(update.getStatus().toString().equals("OK") | update.getStatus().toString().equals("UP_TO_DATE"))) {
+            System.out.println(update.getStatus() + update.getMessage());
+          }
+        }
+      }
+      return true;
+    } else {
+      System.out.println("当前分支有问题");
+      return false;
+    }
+  }
+
   public void getLog()  throws GitAPIException,IOException{
     Iterable<RevCommit> logs = this.git.log().all().call();
     int count = 0;
 
-  //  logs.iterator()
+    //  logs.iterator()
     //当前分支的提交日志
     for (RevCommit rev : logs) {
       /*     System.out.println("Commit: " + rev */

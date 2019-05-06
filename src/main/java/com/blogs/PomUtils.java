@@ -37,6 +37,7 @@ public class PomUtils {
     //使用文档解析器解析一个文件，放到document对象中
     f = pomFile;
     xmldoc = builder.parse(pomFile);
+    xmldoc.setXmlStandalone(true);
   }
 
   public static void main(String[] args) throws ParserConfigurationException, IOException, SAXException {

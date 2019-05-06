@@ -34,8 +34,10 @@ public class Application {
     this.parrentPath = new File(parrentPath);
   }
 
+  //建立工程初始列表：工程名  isMaven工程；
   public boolean builderProjects() {
     String stringSQL;
+    int count =1 ;
     LinkedList<File> list = FileUtils.getSubFolders(this.parrentPath);
     for (File path : list) {
       if (FileUtils.isMaven(path)) {
@@ -48,8 +50,9 @@ public class Application {
       } catch (SQLException e) {
         continue;
       }
+      System.out.println("count " + count  + "检查文件夹完成" + path.getName());
+      count ++;
     }
-    System.out.println("true");
     return true;
   }
 
@@ -61,11 +64,14 @@ public class Application {
     while (proSet.next()) {
       projectName = proSet.getString("name");
       projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
+      System.out.println("---------------------");
+      System.out.println("拉取的工程名：" + projectName);
       GitUtils objGit = new GitUtils(projectPath);
       if (!objGit.branchPull(branchName)) {
         System.out.println("project :" + projectName + "pull false");
         return false;
       }
+      objGit.getStatus();
     }
     System.out.println("true");
     return true;
@@ -106,6 +112,7 @@ public class Application {
         this.mysqlAPI.executeSql(stringSQL);
       }
     }
+    System.out.println("工程tag、master、dev 版本信息处理完");
     return true;
   }
 
@@ -145,6 +152,7 @@ public class Application {
 
   public boolean updateProjectsDependencies() throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
     String projectName;
+    int count =1;
     Map<String,String> dependencies = new HashMap<String,String>();
     List<String> projects = new ArrayList<String>();
     String stringSQL = "select name from publish_projects_list where isChild = 1";
@@ -164,6 +172,7 @@ public class Application {
     stringSQL = "select name from publish_projects_list where isParrent = 1";
     proSet = this.mysqlAPI.executeQuery(stringSQL);
     while (proSet.next()) {
+      count ++;
       projectName = proSet.getString("name");
       stringSQL = String.format("select name from projects_dependencies where name = \"%s\"",projectName);
       if (this.mysqlAPI.count(stringSQL) == 0) {
@@ -182,6 +191,7 @@ public class Application {
           this.mysqlAPI.executeSql(stringSQL);
         }
       }
+      System.out.println("工程 " + count + ":" + projectName);
     }
     //projects_dependencies
 
@@ -277,12 +287,13 @@ public class Application {
     String stringSQL = "select name,newtag,isParrent from publish_projects_list where isMaven =1 and newtag is not null";
     ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
     while (proSet.next()) {
-      projectAddTag.put(proSet.getString("name"),proSet.getString("newtag") + "-SNAPSHOT");
+      projectAddTag.put(proSet.getString("name"),proSet.getString("newtag"));
     }
     proSet.beforeFirst();
     while (proSet.next()) {
       projectName = proSet.getString("name");
-      newVersion = proSet.getString("newtag") + "-SNAPSHOT";
+      System.out.println("修改工程：" + projectName + "的Pom文件");
+      newVersion = proSet.getString("newtag");
       projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
       GitUtils objGit = new GitUtils(projectPath);
       if (!objGit.branchPull("dev")) {
@@ -304,7 +315,6 @@ public class Application {
         for (Map.Entry<String,String> entry: pomObj.getDependency().entrySet()) {
           String dependencyStringName = entry.getKey();
           if (projectAddTag.containsKey(dependencyStringName)) {
-            System.out.println(dependencyStringName + projectAddTag.get(dependencyStringName));
             try {
               pomObj.setDependency(dependencyStringName,projectAddTag.get(dependencyStringName));
             } catch (TransformerException e) {
@@ -314,6 +324,67 @@ public class Application {
           }
         }
       }
+      objGit.getStatus();
+      objGit.commitPomChange("task4643:发版过程中API版本号统一维护");
+    }
+    return true;
+  }
+
+  public boolean branchDevToMaster () throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
+    String stringSQL = "select name,newtag from publish_projects_list where newtag is not null";
+    File projectPath;
+    int count =1;
+    String projectName;
+    ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
+    while (proSet.next()) {
+      projectName = proSet.getString("name");
+      projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
+      System.out.println(count + "工程：" + projectName + " DEV分支Merge到Master");
+      GitUtils objGit = new GitUtils(projectPath);
+      if (objGit.mergeBranch("dev","master")) {
+        System.out.println("merge sucess");
+      }
+      count ++;
+    }
+    return true;
+  }
+
+  public boolean masterTag() throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
+    String stringSQL = "select name,newtag from publish_projects_list where newtag is not null";
+    File projectPath;
+    int count =1;
+    String projectName;
+    String newTag;
+    ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
+    while (proSet.next()) {
+      projectName = proSet.getString("name");
+      newTag = proSet.getString("newtag");
+      System.out.println(count + " 工程：" + projectName + "打Tag :" + newTag);
+      projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
+      GitUtils objGit = new GitUtils(projectPath);
+      if (!objGit.createTag(newTag)) {
+        System.out.println("tag 创建失败");
+      }
+      count ++;
+    }
+    return true;
+  }
+
+  public boolean pushMaster() throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
+    String stringSQL = "select name from publish_projects_list where newtag is not null";
+    File projectPath;
+    int count =1;
+    String projectName;
+    String newTag;
+    ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
+    while (proSet.next()) {
+      projectName = proSet.getString("name");
+      System.out.println( count + " push 工程：" + projectName + "的Master分支");
+      projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
+      GitUtils objGit = new GitUtils(projectPath);
+      if (objGit.pushMaster()) {
+        System.out.println("push master sucess");
+      }
     }
     return true;
   }
@@ -322,16 +393,16 @@ public class Application {
 
     LinkedList<File> list = FileUtils.getSubFolders(new File("D:\\git\\jsh-bak"));
     //File file = new File("D:\\jsh\\jsh\\jsh-service-log-provider");
-    JdbcUtils mysqlAPI = new JdbcUtils();
+    //JdbcUtils mysqlAPI = new JdbcUtils();
     //String stringSQL = "insert into test (id) values(123)";
     //String stringSQL = "update test set id=234;";
-    String stringSQL = "select * from test";
-    System.out.println(mysqlAPI.executeQuery(stringSQL));
+    //String stringSQL = "select * from test";
+    //System.out.println(mysqlAPI.executeQuery(stringSQL));
 
     //mysqlAPI.executeSql(stringSQL);
-/*    for (File file:list) {
+    for (File file:list) {
 
-      File pomFile = new File(file.getAbsolutePath() +  System.getProperty("file.separator") + "pom.xml");
+/*      File pomFile = new File(file.getAbsolutePath() +  System.getProperty("file.separator") + "pom.xml");
       if (pomFile.exists()) {
 
         //System.out.println(file.getName() + " ---"  +obj.getDependency());
@@ -345,24 +416,25 @@ public class Application {
       } else {
         System.out.println(file.getName() + " is not maven project");
       }
-      break;
-    }*/
-/*      GitUtils gu = new GitUtils(file);
-      System.out.println("Project 获取最新的Tag 信息");
+      break;*/
+
+      GitUtils gu = new GitUtils(file);
+      gu.branchPull("dev");
+/*      System.out.println("Project 获取最新的Tag 信息");
       System.out.println(file.getName() + "----" + gu.getLastTag().name);
 
 
-      *//*System.out.println("DEV分支从远程拉去代码并合并");
+      System.out.println("DEV分支从远程拉去代码并合并");
       System.out.println(gu.branchPull("dev"));
       System.out.println("Master分支从远程拉去代码并合并");
-      System.out.println(gu.branchPull("master"));*//*
+      System.out.println(gu.branchPull("master"));
 
 
       System.out.println("将dev分支的代码合并到master分支");
       System.out.println(gu.mergeBranch("dev","master"));
       System.out.println("将master分支的代码合并到dev分支");
-      System.out.println(gu.mergeBranch("master","dev"));
-    }*/
+      System.out.println(gu.mergeBranch("master","dev"));*/
+    }
 
 
 
