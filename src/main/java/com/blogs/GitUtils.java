@@ -270,6 +270,26 @@ public class GitUtils {
     return ifsuccess;
   }
 
+    public boolean commitPomChange(String pomFile,String branchName,String commitMes) throws IOException,GitAPIException{
+    this.git.add()
+            .addFilepattern(pomFile)
+            .call();
+    RevCommit revCommit = this.git.commit()
+            .setMessage(commitMes)
+            .setInsertChangeId(true)
+            .call();
+    Iterable<PushResult> pushResults = this.git.push().setRefSpecs(new RefSpec("HEAD:refs/for/dev%submit")).call();
+    pushResults.iterator();
+    for (PushResult pushResult : pushResults) {
+      for (RemoteRefUpdate update : pushResult.getRemoteUpdates()) {
+        if (!(update.getStatus().toString().equals("OK") | update.getStatus().toString().equals("UP_TO_DATE"))) {
+          System.out.println(update.getStatus() + update.getMessage());
+        }
+      }
+    }
+    return true;
+  }
+
   public boolean commitPomChange(String CommitMes) throws NoFilepatternException,GitAPIException {
     //this.git.commit().setMessage("123").setHookOutputStream();
         this.git.add()

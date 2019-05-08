@@ -4,13 +4,14 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.Map;
 
 public class Publisher {
-    public static void main(String[] args) throws SQLException, IOException, SAXException, ParserConfigurationException, GitAPIException {
+    public static void main(String[] args) throws SQLException, IOException, SAXException, ParserConfigurationException, GitAPIException, TransformerException {
         //设置代码父目录
         String parrentPath = "D:\\git\\jsh-bak";
         Application appObj = new Application(parrentPath);
