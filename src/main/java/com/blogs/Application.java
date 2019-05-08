@@ -22,6 +22,12 @@ public class Application {
   private JdbcUtils mysqlAPI;
   private File parrentPath;
   private PomUtils pomObj;
+  final List<String> FrontProjects = Arrays.asList("ylh-micro-mall",
+          "ylh-web-front-cloud",
+          "ylh-web-front-erp",
+          "ylh-web-front-framework",
+          "ylh-web-front-portal",
+          "ylh-web-front-ylh");
 
   class Dependency {
     protected String name;
@@ -53,6 +59,42 @@ public class Application {
       System.out.println("count " + count  + "检查文件夹完成" + path.getName());
       count ++;
     }
+    return true;
+  }
+
+  /**
+   * 周一预生产发版后，后续预生产发版操作功能方法
+   */
+  public boolean fullowPreMasterCreateTag() throws GitAPIException ,IOException,TransformerException,SAXException,ParserConfigurationException {
+    List<String> projectsList = Arrays.asList("ylh-cloud-service-goods",
+            "ylh-cloud-service-notice",
+            "ylh-cloud-service-order",
+            "ylh-cloud-service-user");
+    File pomFile;
+    File projectPath;
+    String tagVersion;
+
+      for(String projectName : projectsList) {
+        if (FrontProjects.contains(projectName)) {
+          pomFile = new File (this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") +
+                  projectName + System.getProperty("file.separator") + "tag.xml");
+          pomObj = new PomUtils(pomFile);
+          tagVersion = Utils.versionAddOne(pomObj.getVersion());
+          pomObj.setVersion(tagVersion);
+
+        } else {
+          pomFile = new File (this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") +
+                  projectName + System.getProperty("file.separator") + "pom.xml");
+          pomObj = new PomUtils(pomFile);
+          tagVersion = pomObj.getVersion();
+        }
+
+        projectPath = new File (this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") +
+                projectName);
+        GitUtils objGit = new GitUtils(projectPath);
+        objGit.branchPull("master");
+        objGit.createTagAndPush(tagVersion);
+      }
     return true;
   }
 
@@ -362,7 +404,7 @@ public class Application {
       System.out.println(count + " 工程：" + projectName + "打Tag :" + newTag);
       projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
       GitUtils objGit = new GitUtils(projectPath);
-      if (!objGit.createTag(newTag)) {
+      if (!objGit.createTagAndPush(newTag)) {
         System.out.println("tag 创建失败");
       }
       count ++;

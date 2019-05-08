@@ -110,11 +110,12 @@ public class GitUtils {
     return tagsList.get(0);
   }
 
-  public boolean createTag(String tagName)throws GitAPIException,IOException {
+  public boolean createTagAndPush(String tagName)throws GitAPIException,IOException {
     String currentBranch = this.repository.getBranch();
     if (currentBranch.equals("master")) {
-      Ref tag = this.git.tag().setName(tagName).call();
-      return true;
+        Ref tag = this.git.tag().setName(tagName).call();
+        this.git.push().setPushTags().call();
+        return true;
     } else {
       System.out.println("当前分支有问题");
       return false;
