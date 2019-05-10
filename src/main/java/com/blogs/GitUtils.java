@@ -1,5 +1,6 @@
 package com.blogs;
 
+import com.good.codepublish.FilePathUtil;
 import jdk.nashorn.internal.objects.Global;
 import org.eclipse.jgit.api.*;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -14,6 +15,9 @@ import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
+import org.eclipse.jgit.util.ChangeIdUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.text.html.HTML;
 import java.io.File;
@@ -30,6 +34,7 @@ public class GitUtils {
   private Git git;
   private Repository repository;
   private RevWalk walk;
+  private static Logger logger = LoggerFactory.getLogger(FilePathUtil.class);
 
   GitUtils(File parrentFolder) throws IOException, GitAPIException{
    // File parrentFolder = new File("D:\\codes\\jsh-tally-jobs");
@@ -45,6 +50,28 @@ public class GitUtils {
       this.repository = repository;
     }
   }
+
+  /**
+   * 丢弃当前工程中未提交（COMMIT）的修改
+   * @return 成功 true
+   */
+  private boolean resetToHead() {
+    try {
+      this.git.reset().setMode(ResetCommand.ResetType.HARD).call();
+      logger.info("丢弃当前工程未提交的分支：完成");
+    } catch (GitAPIException e) {
+      logger.error(e.getMessage());
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * 返回当期工程所有的tags
+   * @return
+   * @throws GitAPIException
+   * @throws IOException
+   */
   public List<String> getAllTags() throws GitAPIException,IOException {
     List<Ref> call;
     List<String> tags = new ArrayList<String>();
@@ -55,6 +82,14 @@ public class GitUtils {
     return tags;
   }
 
+  /**
+   * 返回当前工程最近的tag
+   *  根据关联的commit 的时间确定
+   *  如果有多个，则取其中一个加#井号返回
+   * @return
+   * @throws GitAPIException
+   * @throws IOException
+   */
   public TagsUtils getLastTag() throws GitAPIException,IOException {
     List<Ref> call;
     call = this.git.tagList().call();
@@ -87,7 +122,7 @@ public class GitUtils {
       //System.out.println(tagsList.get(i).timestamp);
       for (j = i + 1;j < sizeRef;j++) {
         if (tagsList.get(j).timestamp == tagsList.get(i).timestamp &&
-        !tagsList.get(j).name.equals(tagsList.get(i).name)) {
+                !tagsList.get(j).name.equals(tagsList.get(i).name)) {
           //tag 如果以#结束，说明此Commit 上打了过多Tag
           String tagsName1 = tagsList.get(j).name;
           String tagsName2 = tagsList.get(i).name;
@@ -110,57 +145,186 @@ public class GitUtils {
     return tagsList.get(0);
   }
 
-  public boolean createTagAndPush(String tagName)throws GitAPIException,IOException {
-    String currentBranch = this.repository.getBranch();
-    if (currentBranch.equals("master")) {
-        Ref tag = this.git.tag().setName(tagName).call();
+  /**
+   * 在Master分支创建tag,并推送到远程
+   * @param tagName
+   * @return
+   * @throws GitAPIException
+   * @throws IOException
+   */
+  public boolean createTagAndPush(String tagName) {
+    String currentBranch;
+    try {
+      currentBranch = this.repository.getBranch();
+      if (currentBranch.equals("master")) {
+        this.git.tag().setName(tagName).call();
         this.git.push().setPushTags().call();
         return true;
-    } else {
-      System.out.println("当前分支有问题");
+      }else {
+        System.out.println("当前分支有问题");
+        return false;
+      }
+    } catch (GitAPIException|IOException e) {
+      logger.error(e.getMessage());
       return false;
     }
   }
 
-  public boolean branchPull(String branchName) throws GitAPIException,IOException {
-    String currentBranch = this.repository.getBranch();
-    git.reset().setMode(ResetCommand.ResetType.HARD).call();
-    System.out.println("强制回滚分支" + currentBranch + "到HEAD");
-    List<Ref> call = this.git.branchList().call();
-    boolean branchExist = false;
-    for (Ref ref : call) {
-      //System.out.println("Branch: " + ref + " " + ref.getName() + " " + ref.getObjectId().getName());
-      if (ref.getName().equals("refs/heads/" + branchName)) {
-        branchExist = true;
+  /**
+   *如果分支不存在，则创建分支
+   * @param branchName
+   * @return
+   */
+  public boolean createBranchIfNotExist(String branchName) {
+    try {
+      List<Ref> call = this.git.branchList().call();
+      for (Ref ref : call) {
+        if (ref.getName().equals("refs/heads/" + branchName)) {
+          return true;
+        }
       }
+    } catch (GitAPIException e) {
+      logger.error(e.getMessage());
+      return false;
     }
-    if (branchExist) {
-      this.git.checkout().setName(branchName).call();
-    } else {
+    try {
       git.branchCreate()
               .setName(branchName)
               .setStartPoint("origin/" + branchName)
               .call();
-      this.git.checkout().setName(branchName).call();
+        return true;
+    } catch (GitAPIException e) {
+        logger.error(e.getMessage());
+        return false;
     }
-    //this.git.fetch().setCheckFetchedObjects(true).call();
-    PullResult pull = this.git.pull().call();
-    if (pull.isSuccessful()) {
-      /*      System.out.println(pull.getFetchResult(true).call());
-      System.out.println(pull.getMergeResult().getConflicts());
-      System.out.println(pull.isSuccessful());*/
-      System.out.println("工程拉取分支" + branchName + "完成");
+  }
+
+  /**
+   * 切换到指定分支
+   * 要求：
+   * 1、丢弃当前分支未提交的修改！
+   * 2、目标分支如果不存在，则创建分支
+   * @param branchName
+   * @return
+   */
+  public boolean checkoutBranch(String branchName) {
+    String currentBranch;
+    try {
+      currentBranch = this.repository.getBranch();
+      if (!branchName.equals(currentBranch) && resetToHead() && createBranchIfNotExist(branchName)) {
+        this.git.checkout().setName(branchName).call();
+      }
       return true;
-    } else {
+    } catch (Exception e) {
+      logger.error(e.getMessage());
       return false;
     }
   }
 
+  /**
+   * 从远程仓库拉去指定分支的代码，并且合并
+   * @param branchName  分支名称
+   * @return
+   * @throws GitAPIException
+   * @throws IOException
+   */
+  public boolean branchPull(String branchName) throws GitAPIException {
+    this.resetToHead();
+    boolean branchExist = createBranchIfNotExist(branchName);
+    if (branchExist) {
+      this.checkoutBranch(branchName);
+    } else {
+      return false;
+    }
+    //this.git.fetch().setCheckFetchedObjects(true).call()
+    PullResult pull = this.git.pull().call();
+    if (pull.isSuccessful()) {
+      /*System.out.println(pull.getFetchResult(true).call())
+      System.out.println(pull.getMergeResult().getConflicts())
+      System.out.println(pull.isSuccessful())*/
+      logger.info("工程拉取分支 {} 完成",branchName);
+      return true;
+    } else {
+      logger.error("工程拉取分支 {} 失败",branchName);
+      return false;
+    }
+  }
+
+  /**
+   *
+   * @param filePattern
+   * @param commitMsg
+   * @return
+   */
+  public boolean branchCreateCommit(String branchName,String filePattern,String commitMsg) {
+    String currentBranch;
+    try {
+      currentBranch = this.repository.getBranch();
+      if (!branchName.equals(currentBranch)) {
+        return false;
+      }
+      this.git.add()
+              .addFilepattern(filePattern)
+              .call();
+      this.git.commit()
+              .setMessage(commitMsg)
+              .setInsertChangeId(true)
+              .call();
+      return true;
+    } catch (IOException | GitAPIException e) {
+      logger.error(e.getMessage());
+      return false;
+    }
+  }
+
+  /**
+   * 将Commit 提交推送到远程
+   * @param branchName
+   * @return
+   */
+  public boolean branchPushCommit(String branchName) {
+    String currentBranch;
+    Iterable<PushResult> pushResults = new Iterable<PushResult>() {
+      @Override
+      public Iterator<PushResult> iterator() {
+        return null;
+      }
+    };
+    try {
+      currentBranch = this.repository.getBranch();
+      if (!branchName.equals(currentBranch)) {
+        return false;
+      }
+      pushResults = this.git.push()
+              .setRefSpecs(new RefSpec("HEAD:refs/for/" + branchName +"%submit"))
+               .call();
+    } catch (GitAPIException|IOException e) {
+      logger.error(e.getMessage());
+      return false;
+    }
+    pushResults.iterator();
+    for (PushResult pushResult : pushResults) {
+      for (RemoteRefUpdate update : pushResult.getRemoteUpdates()) {
+        if (!(update.getStatus().toString().equals("OK") | update.getStatus().toString().equals("UP_TO_DATE"))) {
+          System.out.println(update.getStatus() + update.getMessage());
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * 将代码从fromBranch 合并到 toBranch
+   * @param fromBranch
+   * @param toBranch
+   * @return
+   * @throws IOException
+   * @throws GitAPIException
+   */
   public boolean mergeBranch(String fromBranch,String toBranch) throws IOException, GitAPIException {
     List<Ref> call = this.git.branchList().call();
     int branchExist =0;
     for (Ref ref : call) {
-      //System.out.println("Branch: " + ref + " " + ref.getName() + " " + ref.getObjectId().getName());
       if (ref.getName().equals("refs/heads/" + toBranch)) {
         branchExist += 1;
       }
@@ -175,20 +339,29 @@ public class GitUtils {
       return false;
     }
     //合并分支
+    //resolve Parse a git revision string and return an object id.
     ObjectId mergeBase = this.repository.resolve(fromBranch);
     // perform the actual merge, here we disable FastForward to see the
     // actual merge-commit even though the merge is trivial
+    //include() the Id of a commit which is merged with the current head
+    String commitMsg = "Merge branch " + fromBranch + " into " + toBranch;
     MergeResult merge = this.git.merge()
             .include(mergeBase)
             .setCommit(true)
             .setFastForward(MergeCommand.FastForwardMode.NO_FF)
             //.setSquash(false)
-            .setMessage(fromBranch +" merge to " + toBranch)
+            .setMessage(commitMsg)
             .call();
+    //System.out.println(this.repository.readMergeCommitMsg());
+//    this.git.commit().setAmend(true).setInsertChangeId(true).call();
+/*    RevCommit commit = this.walk.parseCommit(id);
+    ChangeIdUtil changeIdObj = new ChangeIdUtil();
+    changeIdObj.getClass(merge);*/
+
+
 
     if (merge.getMergeStatus().isSuccessful()) {
       System.out.println("工程 Merge 完成");
-      return true;
     } else {
       System.out.println(merge.getMergeStatus().toString());
       for (Map.Entry<String,int[][]> entry : merge.getConflicts().entrySet()) {
@@ -199,7 +372,13 @@ public class GitUtils {
       }
       return false;
     }
-
+    //System.out.println(this.repository.readMergeCommitMsg());
+    //System.out.println(this.git.commit().getMessage());
+    this.git.commit().setAmend(true)
+            .setMessage(commitMsg)
+            .setInsertChangeId(true)
+            .call();
+    return true;
   /*  getMergeStatus()
       ABORTED
               ALREADY_UP_TO_DATE
@@ -216,6 +395,12 @@ public class GitUtils {
               NOT_SUPPORTED*/
   }
 
+  /**
+   * 获取当前工程的状态
+   * @return
+   * @throws IOException
+   * @throws GitAPIException
+   */
   public boolean getStatus() throws IOException, GitAPIException {
     Status status = this.git.status().call();
     boolean ifsuccess = true;
@@ -268,68 +453,6 @@ public class GitUtils {
       System.out.println("工程状态异常");
     }
     return ifsuccess;
-  }
-
-    public boolean commitPomChange(String pomFile,String branchName,String commitMes) throws IOException,GitAPIException{
-    this.git.add()
-            .addFilepattern(pomFile)
-            .call();
-    RevCommit revCommit = this.git.commit()
-            .setMessage(commitMes)
-            .setInsertChangeId(true)
-            .call();
-    Iterable<PushResult> pushResults = this.git.push().setRefSpecs(new RefSpec("HEAD:refs/for/dev%submit")).call();
-    pushResults.iterator();
-    for (PushResult pushResult : pushResults) {
-      for (RemoteRefUpdate update : pushResult.getRemoteUpdates()) {
-        if (!(update.getStatus().toString().equals("OK") | update.getStatus().toString().equals("UP_TO_DATE"))) {
-          System.out.println(update.getStatus() + update.getMessage());
-        }
-      }
-    }
-    return true;
-  }
-
-  public boolean commitPomChange(String CommitMes) throws NoFilepatternException,GitAPIException {
-    //this.git.commit().setMessage("123").setHookOutputStream();
-        this.git.add()
-            .addFilepattern("pom.xml")
-            .call();
-
-    RevCommit revCommit = this.git.commit()
-            .setMessage(CommitMes)
-            .setInsertChangeId(true)
-            .call();
-
-    Iterable<PushResult> pushResults = this.git.push().setRefSpecs(new RefSpec("HEAD:refs/for/dev%submit")).call();
-    pushResults.iterator();
-    for (PushResult pushResult : pushResults) {
-      for (RemoteRefUpdate update : pushResult.getRemoteUpdates()) {
-        if (!(update.getStatus().toString().equals("OK") | update.getStatus().toString().equals("UP_TO_DATE"))) {
-          System.out.println(update.getStatus() + update.getMessage());
-        }
-      }
-    }
-    return true;
-  }
-
-  public boolean pushMaster()  throws NoFilepatternException,GitAPIException,IOException{
-    String currentBranch = this.repository.getBranch();
-    if (currentBranch.equals("master")) {
-      Iterable<PushResult> pushResults = this.git.push().setRefSpecs(new RefSpec("HEAD:refs/heads/master")).call();
-      pushResults.iterator();
-      for (PushResult pushResult : pushResults) {
-        for (RemoteRefUpdate update : pushResult.getRemoteUpdates()) {
-          if (!(update.getStatus().toString().equals("OK") | update.getStatus().toString().equals("UP_TO_DATE"))) {
-            System.out.println(update.getStatus() + update.getMessage());
-          }
-        }
-      }
-      return true;
-    } else {
-      System.out.println("当前分支有问题");
-      return false;
-    }
   }
 
   public void getLog()  throws GitAPIException,IOException{

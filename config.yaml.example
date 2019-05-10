@@ -2,3 +2,19 @@ MySQL :
     url : jdbc:mysql://192.168.0.55:3306/test
     user : java
     password : java
+
+frontProjects:
+    - ylh-micro-mall
+    - ylh-web-front-cloud
+    - ylh-web-front-erp
+    - ylh-web-front-framework
+    - ylh-web-front-portal
+    - ylh-web-front-ylh
+
+publishProjects:
+    - ylh-micro-mall
+    - ylh-web-front-cloud
+    - ylh-web-front-erp
+    - ylh-web-front-framework
+    - ylh-web-front-portal
+    - ylh-web-front-ylh

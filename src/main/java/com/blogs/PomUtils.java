@@ -29,6 +29,13 @@ public class PomUtils {
   protected static Document xmldoc;
   protected static File f;
 
+  /**
+   * 初始化对象
+   * @param pomFile
+   * @throws ParserConfigurationException
+   * @throws IOException
+   * @throws SAXException
+   */
   PomUtils(File pomFile) throws ParserConfigurationException, IOException, SAXException{
     //System.out.println(pomFile);
     DocumentBuilderFactory fac = DocumentBuilderFactory.newInstance();
@@ -75,6 +82,10 @@ public class PomUtils {
     }
   }
 
+  /**
+   * 获取XML文件中，第一层嵌套中的version
+   * @return
+   */
   public static String getVersion(){
     Element element = xmldoc.getDocumentElement();
     Node node = element.getFirstChild();
@@ -89,6 +100,12 @@ public class PomUtils {
     return "NotFound";
   }
 
+  /**
+   * 设置当前文件version
+   * @param projectVersion
+   * @return
+   * @throws TransformerException
+   */
   public static boolean setVersion (String projectVersion) throws TransformerException {
     Element element = xmldoc.getDocumentElement();
     Node node = element.getFirstChild();

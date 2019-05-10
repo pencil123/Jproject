@@ -20,7 +20,7 @@ public class Publisher {
         //appObj.builderProjects();
 
         //更新分支的代码
-       // appObj.checkoutBranch("master");
+        //appObj.checkoutBranch("master");
         //appObj.checkoutBranch("dev");
 
         //更新工程的tags列表到数据库 project_tags_list
@@ -52,6 +52,15 @@ public class Publisher {
 
 
         // 周一以后的预生产发版操作方法
-        appObj.fullowPreMasterCreateTag();
+        //appObj.fullowPreMasterCreateTag();
+
+        //发生产前，更新version
+       // appObj.pudateFollowMaster();
+
+        //master  merge 到 DEV
+        appObj.branchMasterToDev();
+
+        // master 分支push
+        //appObj.branchPushDev();
     }
 }
