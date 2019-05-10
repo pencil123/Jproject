@@ -14,6 +14,11 @@ public class Utils {
     Utils.frontProjects();
   }
 
+  /**
+   * 对传入的version，加一并返回
+   * @param version
+   * @return
+   */
   public static String versionAddOne(String version) {
     String[] versionArray = version.split("\\.");
     String newVersion = null;
@@ -26,7 +31,7 @@ public class Utils {
   }
 
   /**
-   * 从配置文件中，获取前段的工程
+   * 从配置文件（config.yaml）中，获取前端（front）的工程
    *
    * @return
    * @throws FileNotFoundException
@@ -42,6 +47,7 @@ public class Utils {
 
   /**
    * 从配置文件中,获取要发版的工程
+   *
    * @return
    * @throws FileNotFoundException
    */

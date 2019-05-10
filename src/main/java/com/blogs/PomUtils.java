@@ -31,12 +31,13 @@ public class PomUtils {
 
   /**
    * 初始化对象
+   *
    * @param pomFile
    * @throws ParserConfigurationException
    * @throws IOException
    * @throws SAXException
    */
-  PomUtils(File pomFile) throws ParserConfigurationException, IOException, SAXException{
+  PomUtils(File pomFile) throws ParserConfigurationException, IOException, SAXException {
     //System.out.println(pomFile);
     DocumentBuilderFactory fac = DocumentBuilderFactory.newInstance();
     //使用工程，创建一个文档解析器
@@ -68,7 +69,7 @@ public class PomUtils {
     System.out.println(xmldoc.getDocumentElement().getFirstChild().getNextSibling().getNextSibling().getNextSibling());*/
 
     Node node = element.getFirstChild();
-    while (node.getNodeType() > 0){
+    while (node.getNodeType() > 0) {
       System.out.println(node.getNodeName());
       node = node.getNextSibling();
       System.out.println(node.getNodeType());
@@ -77,16 +78,17 @@ public class PomUtils {
     System.out.println(xmldoc.getDocumentElement().getLastChild().getNextSibling());
     System.out.println("----------------");
 
-    for (int i = 0;i < list.getLength();i++) {
+    for (int i = 0; i < list.getLength(); i++) {
       System.out.println(list.item(i).getTextContent());
     }
   }
 
   /**
    * 获取XML文件中，第一层嵌套中的version
+   *
    * @return
    */
-  public static String getVersion(){
+  public static String getVersion() {
     Element element = xmldoc.getDocumentElement();
     Node node = element.getFirstChild();
     while (node.getNodeType() > 0) {
@@ -106,7 +108,7 @@ public class PomUtils {
    * @return
    * @throws TransformerException
    */
-  public static boolean setVersion (String projectVersion) throws TransformerException {
+  public static boolean setVersion(String projectVersion) throws TransformerException {
     Element element = xmldoc.getDocumentElement();
     Node node = element.getFirstChild();
     boolean change = false;
@@ -123,23 +125,35 @@ public class PomUtils {
     if (change) {
       TransformerFactory factor = TransformerFactory.newInstance();
       Transformer former = factor.newTransformer();
-      former.transform(new DOMSource(xmldoc),new StreamResult(f));
+      former.transform(new DOMSource(xmldoc), new StreamResult(f));
     }
     return true;
   }
 
-  public static Map<String, String> getDependency () {
-    Map<String,String> dependencies = new HashMap<String,String>();
+  /**
+   * 获取POM文件中，工程依赖的工程信息
+   *
+   * @return
+   */
+  public static Map<String, String> getDependency() {
+    Map<String, String> dependencies = new HashMap<String, String>();
     NodeList nodesDepend = xmldoc.getElementsByTagName("properties");
     //System.out.println(nodesDepend.getLength());
     Node dependency = nodesDepend.item(0).getFirstChild();
     while (dependency != null) {
-      dependencies.put(dependency.getNodeName().replace(".version",""),dependency.getTextContent());
+      dependencies.put(dependency.getNodeName().replace(".version", ""), dependency.getTextContent());
       dependency = dependency.getNextSibling();
     }
     return dependencies;
   }
 
+  /**
+   * 设置工程POM文件中的依赖关系
+   * @param projectName
+   * @param projectVersion
+   * @return
+   * @throws TransformerException
+   */
   public static boolean setDependency (String projectName,String projectVersion) throws TransformerException{
     NodeList nodesDepend = xmldoc.getElementsByTagName("properties");
     projectName = projectName + ".version";

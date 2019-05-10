@@ -3,17 +3,13 @@ package com.blogs;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Array;
-
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
-
 import com.good.codepublish.FilePathUtil;
 import org.eclipse.jgit.api.errors.GitAPIException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
@@ -28,6 +24,7 @@ public class Application {
   private PomUtils pomObj;
   private static Logger logger = LoggerFactory.getLogger(FilePathUtil.class);
 
+
   class Dependency {
     protected String name;
     //0：一般工程，1：库工程，2：修改pom的工程
@@ -37,6 +34,7 @@ public class Application {
 
   /**
    * 初始化对象
+   *
    * @param parrentPath
    * @throws SQLException
    */
@@ -56,14 +54,14 @@ public class Application {
     for (File path : list) {
       if (FileUtils.isMaven(path)) {
         stringSQL =
-            String.format(
-                "insert into publish_projects_list (name,isMaven) values(\"%s\",%d)",
-                path.getName(), 1);
+                String.format(
+                        "insert into publish_projects_list (name,isMaven) values(\"%s\",%d)",
+                        path.getName(), 1);
       } else {
         stringSQL =
-            String.format(
-                "insert into publish_projects_list (name,isMaven) values(\"%s\",%d)",
-                path.getName(), 0);
+                String.format(
+                        "insert into publish_projects_list (name,isMaven) values(\"%s\",%d)",
+                        path.getName(), 0);
       }
       try {
         this.mysqlAPI.executeSql(stringSQL);
@@ -180,9 +178,20 @@ public class Application {
     return true;
   }
 
+  /**
+   * 将当前Master分支的version 更新至表publish_projects_list的master_follow字段
+   * 用于从预生产到生产过程中，确认要发版的工程以及版本号
+   *
+   * @return
+   * @throws GitAPIException
+   * @throws IOException
+   * @throws SQLException
+   * @throws SAXException
+   * @throws ParserConfigurationException
+   */
   public boolean pudateFollowMaster()
           throws GitAPIException, IOException, SQLException, SAXException,
-          ParserConfigurationException{
+          ParserConfigurationException {
     String projectName;
     String version;
     File projectPath;
@@ -216,12 +225,14 @@ public class Application {
         System.out.println(stringSQL);
         this.mysqlAPI.executeSql(stringSQL);
       }
-      logger.info("工程:{}master版本信息处理完",projectName);
+      logger.info("工程:{}master版本信息处理完", projectName);
     }
     return true;
   }
+
   /**
-   *更新所有工程的最新tag,master分支和dev分支Version
+   * 更新所有工程的最新tag,master分支和dev分支Version
+   *
    * @return
    * @throws GitAPIException
    * @throws IOException
@@ -230,7 +241,7 @@ public class Application {
    * @throws ParserConfigurationException
    */
   public boolean updateVersion()
-      throws GitAPIException, IOException, SQLException, SAXException,
+          throws GitAPIException, IOException, SQLException, SAXException,
           ParserConfigurationException {
     String projectName;
     String version;
@@ -241,19 +252,19 @@ public class Application {
     while (proSet.next()) {
       projectName = proSet.getString("name");
       projectPath =
-          new File(
-              this.parrentPath.getAbsolutePath()
-                  + System.getProperty("file.separator")
-                  + projectName);
+              new File(
+                      this.parrentPath.getAbsolutePath()
+                              + System.getProperty("file.separator")
+                              + projectName);
       GitUtils objGit = new GitUtils(projectPath);
       objGit.branchPull("master");
       TagsUtils objTag = objGit.getLastTag();
       stringSQL =
-          String.format(
-              "update publish_projects_list set tag = \"%s\" where name=\"%s\"",
-              objTag.name, projectName);
+              String.format(
+                      "update publish_projects_list set tag = \"%s\" where name=\"%s\"",
+                      objTag.name, projectName);
       this.mysqlAPI.executeSql(stringSQL);
-      logger.info("更新工程:{}的最新tag:{}",projectName,objTag.name);
+      logger.info("更新工程:{}的最新tag:{}", projectName, objTag.name);
       if (proSet.getBoolean("isMaven")) {
         pomFile =
                 new File(
@@ -267,9 +278,9 @@ public class Application {
         pomObj = new PomUtils(pomFile);
         version = pomObj.getVersion();
         stringSQL =
-            String.format(
-                "update publish_projects_list set master =\"%s\" where name=\"%s\"",
-                version, projectName);
+                String.format(
+                        "update publish_projects_list set master =\"%s\" where name=\"%s\"",
+                        version, projectName);
         System.out.println(stringSQL);
         this.mysqlAPI.executeSql(stringSQL);
       }
@@ -277,13 +288,13 @@ public class Application {
         pomObj = new PomUtils(pomFile);
         version = pomObj.getVersion();
         stringSQL =
-            String.format(
-                "update publish_projects_list set dev =\"%s\" where name=\"%s\"",
-                version, projectName);
+                String.format(
+                        "update publish_projects_list set dev =\"%s\" where name=\"%s\"",
+                        version, projectName);
         System.out.println(stringSQL);
         this.mysqlAPI.executeSql(stringSQL);
       }
-      logger.info("工程:{}tag、master、dev 版本信息处理完",projectName);
+      logger.info("工程:{}tag、master、dev 版本信息处理完", projectName);
     }
     return true;
   }
@@ -292,6 +303,7 @@ public class Application {
    * 工程的依赖属性；
    * 被其他工程依赖
    * 依赖其他工程
+   *
    * @return
    * @throws SQLException
    * @throws IOException
@@ -299,7 +311,7 @@ public class Application {
    * @throws ParserConfigurationException
    */
   public boolean builderProDependency()
-      throws SQLException, IOException, SAXException, ParserConfigurationException {
+          throws SQLException, IOException, SAXException, ParserConfigurationException {
     Map<String, String> dependencies = new HashMap<String, String>();
     List<String> projects = new ArrayList<String>();
     String stringSQL = "select name from publish_projects_list where isMaven = 1";
@@ -312,12 +324,12 @@ public class Application {
     proSet.beforeFirst();
     while (proSet.next()) {
       File pomFile =
-          new File(
-              this.parrentPath.getAbsolutePath()
-                  + System.getProperty("file.separator")
-                  + proSet.getString("name")
-                  + System.getProperty("file.separator")
-                  + "pom.xml");
+              new File(
+                      this.parrentPath.getAbsolutePath()
+                              + System.getProperty("file.separator")
+                              + proSet.getString("name")
+                              + System.getProperty("file.separator")
+                              + "pom.xml");
       pomObj = new PomUtils(pomFile);
       isParrent = false;
       dependencies = pomObj.getDependency();
@@ -325,18 +337,18 @@ public class Application {
         String dependencyStringName = entry.getKey().replace(".version", "");
         if (projects.contains(dependencyStringName)) {
           stringSQL =
-              String.format(
-                  "update publish_projects_list set isChild =1 where name = \"%s\"",
-                  dependencyStringName);
+                  String.format(
+                          "update publish_projects_list set isChild =1 where name = \"%s\"",
+                          dependencyStringName);
           this.mysqlAPI.executeSql(stringSQL);
           isParrent = true;
         }
       }
       if (isParrent) {
         stringSQL =
-            String.format(
-                ("update publish_projects_list set isParrent =1 where name=\"%s\""),
-                proSet.getString("name"));
+                String.format(
+                        ("update publish_projects_list set isParrent =1 where name=\"%s\""),
+                        proSet.getString("name"));
         this.mysqlAPI.executeSql(stringSQL);
       }
     }
@@ -345,6 +357,7 @@ public class Application {
 
   /**
    * 将工程间依赖关系导入到数据表 projects_dependencies
+   *
    * @return
    * @throws GitAPIException
    * @throws IOException
@@ -353,7 +366,7 @@ public class Application {
    * @throws ParserConfigurationException
    */
   public boolean updateProjectsDependencies()
-      throws IOException, SQLException, SAXException,
+          throws IOException, SQLException, SAXException,
           ParserConfigurationException {
     String projectName;
     int count = 1;
@@ -368,9 +381,9 @@ public class Application {
       projects.add(projectName);
       if (!this.mysqlAPI.isExistColumn(columnSet, projectName)) {
         stringSQL =
-            String.format(
-                "alter table projects_dependencies add %s varchar(20) default null after name",
-                projectName);
+                String.format(
+                        "alter table projects_dependencies add %s varchar(20) default null after name",
+                        projectName);
         System.out.println(stringSQL);
         this.mysqlAPI.execute(stringSQL);
       }
@@ -382,19 +395,19 @@ public class Application {
       count++;
       projectName = proSet.getString("name");
       stringSQL =
-          String.format("select name from projects_dependencies where name = \"%s\"", projectName);
+              String.format("select name from projects_dependencies where name = \"%s\"", projectName);
       if (this.mysqlAPI.count(stringSQL) == 0) {
         stringSQL =
-            String.format("insert into projects_dependencies (name) values(\"%s\")", projectName);
+                String.format("insert into projects_dependencies (name) values(\"%s\")", projectName);
         this.mysqlAPI.executeSql(stringSQL);
       }
       File pomFile =
-          new File(
-              this.parrentPath.getAbsolutePath()
-                  + System.getProperty("file.separator")
-                  + proSet.getString("name")
-                  + System.getProperty("file.separator")
-                  + "pom.xml");
+              new File(
+                      this.parrentPath.getAbsolutePath()
+                              + System.getProperty("file.separator")
+                              + proSet.getString("name")
+                              + System.getProperty("file.separator")
+                              + "pom.xml");
       pomObj = new PomUtils(pomFile);
       dependencies = pomObj.getDependency();
       for (Map.Entry<String, String> entry : dependencies.entrySet()) {
@@ -402,26 +415,25 @@ public class Application {
         dependencyStringName = dependencyStringName.replace("-", "_");
         if (projects.contains(dependencyStringName)) {
           stringSQL =
-              String.format(
-                  "update projects_dependencies set %s = \"%s\" where name=\"%s\"",
-                  dependencyStringName, entry.getValue(), proSet.getString("name"));
+                  String.format(
+                          "update projects_dependencies set %s = \"%s\" where name=\"%s\"",
+                          dependencyStringName, entry.getValue(), proSet.getString("name"));
           this.mysqlAPI.executeSql(stringSQL);
         }
       }
       System.out.println("工程 " + count + ":" + projectName);
     }
-    // projects_dependencies
-
     return true;
   }
 
   /**
-   * 生成下次预生产批量发版的tag
+   * TODO (Front 工厂没有处理)生成下次预生产批量发版的tag
+   *
    * @return
    * @throws SQLException
    */
   public boolean listPublish()
-      throws  SQLException {
+          throws SQLException {
     Map<String, Dependency> publisher = new HashMap<String, Dependency>();
     String stringSQL = "update publish_projects_list set newtag =null,newtag_type=null";
     this.mysqlAPI.executeSql(stringSQL);
@@ -436,10 +448,10 @@ public class Application {
         depenClass.version = proSet.getString("dev");
         publisher.put(proSet.getString("name"), depenClass);
         stringSQL =
-            String.format(
-                "select name from projects_dependencies where %s is not null",
-                proSet.getString("name").replace("-", "_"));
-        logger.info("发现库工程：{}",proSet.getString("name"));
+                String.format(
+                        "select name from projects_dependencies where %s is not null",
+                        proSet.getString("name").replace("-", "_"));
+        logger.info("发现库工程：{}", proSet.getString("name"));
         ResultSet depPro = this.mysqlAPI.executeQuery(stringSQL);
         while (depPro.next()) {
           if (!publisher.containsKey(depPro.getString("name"))) {
@@ -458,44 +470,44 @@ public class Application {
       if (entry.getValue().type != 2) {
         String version = entry.getValue().version.replace("-SNAPSHOT", "");
         stringSQL =
-            String.format(
-                "select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",
-                entry.getKey(), version);
+                String.format(
+                        "select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",
+                        entry.getKey(), version);
         while (this.mysqlAPI.count(stringSQL) > 0) {
           version = Utils.versionAddOne(version);
           stringSQL =
-              String.format(
-                  "select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",
-                  entry.getKey(), version);
+                  String.format(
+                          "select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",
+                          entry.getKey(), version);
         }
         stringSQL =
-            String.format(
-                "update publish_projects_list set newtag = \"%s\",newtag_type=%d where name=\"%s\"",
-                version, entry.getValue().type, entry.getKey());
-        logger.info("设置工程：{} 下个Tag: {}",entry.getKey(),version);
+                String.format(
+                        "update publish_projects_list set newtag = \"%s\",newtag_type=%d where name=\"%s\"",
+                        version, entry.getValue().type, entry.getKey());
+        logger.info("设置工程：{} 下个Tag: {}", entry.getKey(), version);
       } else {
         stringSQL =
-            String.format(
-                "select dev from publish_projects_list where name = \"%s\"", entry.getKey());
+                String.format(
+                        "select dev from publish_projects_list where name = \"%s\"", entry.getKey());
         ResultSet rs = this.mysqlAPI.executeQuery(stringSQL);
         rs.next();
         String newVersion = Utils.versionAddOne(rs.getString("dev"));
         stringSQL =
-            String.format(
-                "select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",
-                entry.getKey(), newVersion);
+                String.format(
+                        "select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",
+                        entry.getKey(), newVersion);
         while (this.mysqlAPI.count(stringSQL) > 0) {
           newVersion = Utils.versionAddOne(newVersion);
           stringSQL =
-              String.format(
-                  "select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",
-                  entry.getKey(), newVersion);
+                  String.format(
+                          "select id from project_tags_list where name=\"%s\" and tag_name = \"%s\"",
+                          entry.getKey(), newVersion);
         }
         stringSQL =
-            String.format(
-                "update publish_projects_list set newtag = \"%s\",newtag_type=%s where name=\"%s\"",
-                newVersion, 2, entry.getKey());
-        logger.info("设置工程：{} 下个Tag: {}",entry.getKey(),newVersion);
+                String.format(
+                        "update publish_projects_list set newtag = \"%s\",newtag_type=%s where name=\"%s\"",
+                        newVersion, 2, entry.getKey());
+        logger.info("设置工程：{} 下个Tag: {}", entry.getKey(), newVersion);
       }
       this.mysqlAPI.executeSql(stringSQL);
     }
@@ -504,6 +516,7 @@ public class Application {
 
   /**
    * 更新所有的工程tag到数据表中
+   *
    * @return
    * @throws GitAPIException
    * @throws IOException
@@ -512,7 +525,7 @@ public class Application {
    * @throws ParserConfigurationException
    */
   public boolean updateTags()
-      throws GitAPIException, IOException, SQLException, SAXException,
+          throws GitAPIException, IOException, SQLException, SAXException,
           ParserConfigurationException {
     String projectName;
     File projectPath;
@@ -521,16 +534,16 @@ public class Application {
     while (proSet.next()) {
       projectName = proSet.getString("name");
       projectPath =
-          new File(
-              this.parrentPath.getAbsolutePath()
-                  + System.getProperty("file.separator")
-                  + projectName);
+              new File(
+                      this.parrentPath.getAbsolutePath()
+                              + System.getProperty("file.separator")
+                              + projectName);
       GitUtils objGit = new GitUtils(projectPath);
       for (String tag : objGit.getAllTags()) {
         stringSQL =
-            String.format(
-                "insert into project_tags_list (name,tag_name) values(\"%s\",\"%s\")",
-                projectName, tag);
+                String.format(
+                        "insert into project_tags_list (name,tag_name) values(\"%s\",\"%s\")",
+                        projectName, tag);
         try {
           this.mysqlAPI.executeSql(stringSQL);
         } catch (SQLException e) {
@@ -542,6 +555,15 @@ public class Application {
     return true;
   }
 
+  /**
+   * TODO 修改
+   * @return
+   * @throws GitAPIException
+   * @throws IOException
+   * @throws SQLException
+   * @throws SAXException
+   * @throws ParserConfigurationException
+   */
   public boolean updateDevPom()
       throws GitAPIException, IOException, SQLException, SAXException,
           ParserConfigurationException {
@@ -612,10 +634,21 @@ public class Application {
     return true;
   }
 
-  public boolean branchDevToMaster () throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
+  /**
+   * 将publish_projects_list 表中存在newtag的工程,进行Merge操作
+   * @param fromBranch 代码源分支
+   * @param toBranch 代码目标分支
+   * @return
+   * @throws GitAPIException
+   * @throws IOException
+   * @throws SQLException
+   * @throws SAXException
+   * @throws ParserConfigurationException
+   */
+  public boolean mergeNewtagBranch(String fromBranch,String toBranch) throws GitAPIException, IOException, SQLException, SAXException, ParserConfigurationException {
     String stringSQL = "select name,newtag from publish_projects_list where newtag is not null";
     File projectPath;
-    int count =1;
+    int count = 1;
     String projectName;
     ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
     while (proSet.next()) {
@@ -623,63 +656,28 @@ public class Application {
       projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
       System.out.println(count + "工程：" + projectName + " DEV分支Merge到Master");
       GitUtils objGit = new GitUtils(projectPath);
-      if (objGit.mergeBranch("dev","master")) {
+      if (objGit.mergeBranch("dev", "master")) {
         System.out.println("merge sucess");
       }
-      count ++;
+      count++;
     }
     return true;
   }
 
-
-  public boolean branchMasterToDev () throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
-    //  String stringSQL = "select name,newtag from publish_projects_list where newtag is not null";
-    String stringSQL =
-        "select name,newtag from publish_projects_list where name=\"ylh-web-front-portal\"";
-    File projectPath;
-    int count =1;
-    String projectName;
-    ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
-    while (proSet.next()) {
-      projectName = proSet.getString("name");
-      projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
-      System.out.println(count + "工程：" + projectName + " Master分支Merge到DEV");
-      GitUtils objGit = new GitUtils(projectPath);
-      if (objGit.mergeBranch("master","dev")) {
-        System.out.println("merge sucess");
-      }
-      count ++;
-    }
-    return true;
-  }
-
-  public boolean branchPushDev() throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
- //   String stringSQL = "select name,newtag from publish_projects_list where newtag is not null";
-    String stringSQL = "select name,newtag from publish_projects_list where name=\"ylh-micro-mall\"";
-    File projectPath;
-    int count =1;
-    String projectName;
-    ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
-    while (proSet.next()) {
-      projectName = proSet.getString("name");
-      projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
-      System.out.println(count + "工程：" + projectName + " Master分支Push");
-      GitUtils objGit = new GitUtils(projectPath);
-      if (objGit.branchPushCommit("dev")) {
-        System.out.println("sucess");
-      } else {
-        System.out.println("false");
-      }
-      count ++;
-    }
-    return true;
-  }
-
-
-  public boolean masterTag() throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
+  /**
+   * 将publish_projects_list 表中存在newtag的工程,在Master分支创建TAG并push
+   *
+   * @return
+   * @throws GitAPIException
+   * @throws IOException
+   * @throws SQLException
+   * @throws SAXException
+   * @throws ParserConfigurationException
+   */
+  public boolean masterTag() throws GitAPIException, IOException, SQLException, SAXException, ParserConfigurationException {
     String stringSQL = "select name,newtag from publish_projects_list where newtag is not null";
     File projectPath;
-    int count =1;
+    int count = 1;
     String projectName;
     String newTag;
     ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
@@ -692,24 +690,35 @@ public class Application {
       if (!objGit.createTagAndPush(newTag)) {
         System.out.println("tag 创建失败");
       }
-      count ++;
+      count++;
     }
     return true;
   }
 
-  public boolean pushMaster() throws GitAPIException ,IOException,SQLException,SAXException,ParserConfigurationException{
+  /**
+   * 将publish_projects_list 表中存在newtag的工程,Push 相应的分支到远程
+   *
+   * @param branchName 要push的分支
+   * @return
+   * @throws GitAPIException
+   * @throws IOException
+   * @throws SQLException
+   * @throws SAXException
+   * @throws ParserConfigurationException
+   */
+  public boolean pushBranch(String branchName) throws GitAPIException, IOException, SQLException, SAXException, ParserConfigurationException {
     String stringSQL = "select name from publish_projects_list where newtag is not null";
     File projectPath;
-    int count =1;
+    int count = 1;
     String projectName;
     String newTag;
     ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
     while (proSet.next()) {
       projectName = proSet.getString("name");
-      System.out.println( count + " push 工程：" + projectName + "的Master分支");
+      System.out.println(count + " push 工程：" + projectName + "的" + branchName + "分支");
       projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
       GitUtils objGit = new GitUtils(projectPath);
-      if (objGit.branchPushCommit("master")) {
+      if (objGit.branchPushCommit(branchName)) {
         System.out.println("push master sucess");
       }
     }
@@ -717,7 +726,6 @@ public class Application {
   }
 
   public static void main(String[] args) throws IOException, GitAPIException, IOException, SAXException, ParserConfigurationException, TransformerException, SQLException {
-
     LinkedList<File> list = FileUtils.getSubFolders(new File("D:\\git\\jsh-bak"));
     //File file = new File("D:\\jsh\\jsh\\jsh-service-log-provider");
     //JdbcUtils mysqlAPI = new JdbcUtils();
@@ -762,8 +770,5 @@ public class Application {
       System.out.println("将master分支的代码合并到dev分支");
       System.out.println(gu.mergeBranch("master","dev"));*/
     }
-
-
-
   }
 }

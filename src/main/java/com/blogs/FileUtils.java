@@ -29,12 +29,14 @@ public class FileUtils {
     }
   }
 
-  /** 遍历文件子文件夹方法 */
+  /**
+   * 遍历文件子文件夹方法
+   */
   public static LinkedList getSubFolders(File folderPath) {
     LinkedList<File> list = new LinkedList<>();
     if (folderPath.exists()) {
       File[] files = folderPath.listFiles();
-      for (File file2 : files){
+      for (File file2 : files) {
         if (file2.isDirectory() && !file2.getName().equals(".idea")) {
           //logger.info(file2.getName());
           list.add(file2);
@@ -44,8 +46,13 @@ public class FileUtils {
     return list;
   }
 
+  /**
+   * 判断工程目录下是否有pom文件
+   * @param folderPath
+   * @return
+   */
   public static Boolean isMaven(File folderPath) {
-    File pomFile = new File(folderPath.getAbsolutePath() +  System.getProperty("file.separator") + "pom.xml");
+    File pomFile = new File(folderPath.getAbsolutePath() + System.getProperty("file.separator") + "pom.xml");
     if (pomFile.exists()) {
       return true;
     } else {

@@ -72,11 +72,11 @@ public class GitUtils {
    * @throws GitAPIException
    * @throws IOException
    */
-  public List<String> getAllTags() throws GitAPIException,IOException {
+  public List<String> getAllTags() throws GitAPIException, IOException {
     List<Ref> call;
     List<String> tags = new ArrayList<String>();
     call = this.git.tagList().call();
-    for (Ref ref :call ) {
+    for (Ref ref : call) {
       tags.add(ref.getName().split("/")[2]);
     }
     return tags;
@@ -251,7 +251,8 @@ public class GitUtils {
   }
 
   /**
-   *
+   * 在指定分支创建Commit 提交
+   * @param branchName
    * @param filePattern
    * @param commitMsg
    * @return
@@ -275,42 +276,6 @@ public class GitUtils {
       logger.error(e.getMessage());
       return false;
     }
-  }
-
-  /**
-   * 将Commit 提交推送到远程
-   * @param branchName
-   * @return
-   */
-  public boolean branchPushCommit(String branchName) {
-    String currentBranch;
-    Iterable<PushResult> pushResults = new Iterable<PushResult>() {
-      @Override
-      public Iterator<PushResult> iterator() {
-        return null;
-      }
-    };
-    try {
-      currentBranch = this.repository.getBranch();
-      if (!branchName.equals(currentBranch)) {
-        return false;
-      }
-      pushResults = this.git.push()
-              .setRefSpecs(new RefSpec("HEAD:refs/for/" + branchName +"%submit"))
-               .call();
-    } catch (GitAPIException|IOException e) {
-      logger.error(e.getMessage());
-      return false;
-    }
-    pushResults.iterator();
-    for (PushResult pushResult : pushResults) {
-      for (RemoteRefUpdate update : pushResult.getRemoteUpdates()) {
-        if (!(update.getStatus().toString().equals("OK") | update.getStatus().toString().equals("UP_TO_DATE"))) {
-          System.out.println(update.getStatus() + update.getMessage());
-        }
-      }
-    }
-    return true;
   }
 
   /**
@@ -358,8 +323,6 @@ public class GitUtils {
     ChangeIdUtil changeIdObj = new ChangeIdUtil();
     changeIdObj.getClass(merge);*/
 
-
-
     if (merge.getMergeStatus().isSuccessful()) {
       System.out.println("工程 Merge 完成");
     } else {
@@ -393,6 +356,42 @@ public class GitUtils {
               MERGED_SQUASHED
       MERGED_SQUASHED_NOT_COMMITTED
               NOT_SUPPORTED*/
+  }
+
+  /**
+   * 将Commit 提交推送到远程指定分支
+   * @param branchName
+   * @return
+   */
+  public boolean branchPushCommit(String branchName) {
+    String currentBranch;
+    Iterable<PushResult> pushResults = new Iterable<PushResult>() {
+      @Override
+      public Iterator<PushResult> iterator() {
+        return null;
+      }
+    };
+    try {
+      currentBranch = this.repository.getBranch();
+      if (!branchName.equals(currentBranch)) {
+        return false;
+      }
+      pushResults = this.git.push()
+              .setRefSpecs(new RefSpec("HEAD:refs/for/" + branchName +"%submit"))
+               .call();
+    } catch (GitAPIException|IOException e) {
+      logger.error(e.getMessage());
+      return false;
+    }
+    pushResults.iterator();
+    for (PushResult pushResult : pushResults) {
+      for (RemoteRefUpdate update : pushResult.getRemoteUpdates()) {
+        if (!(update.getStatus().toString().equals("OK") | update.getStatus().toString().equals("UP_TO_DATE"))) {
+          System.out.println(update.getStatus() + update.getMessage());
+        }
+      }
+    }
+    return true;
   }
 
   /**
