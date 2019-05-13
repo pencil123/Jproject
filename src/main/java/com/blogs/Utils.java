@@ -11,7 +11,9 @@ import java.util.Map;
 public class Utils {
 
   public static void main(String[] args) throws FileNotFoundException {
-    Utils.frontProjects();
+    for (String project : Utils.operateProjects()) {
+      System.out.println(project);
+    }
   }
 
   /**
@@ -57,6 +59,22 @@ public class Utils {
     File configFile = new File("config.yaml");
     Map result = (Map) yaml.load(new FileInputStream(configFile));
     projects = (List<String>) result.get("publishProjects");
+    return projects;
+  }
+
+
+  /**
+   * 从配置文件中,获取要Merge的工程
+   *
+   * @return
+   * @throws FileNotFoundException
+   */
+  public static List<String> operateProjects() throws FileNotFoundException {
+    Yaml yaml = new Yaml();
+    List<String> projects;
+    File configFile = new File("config.yaml");
+    Map result = (Map) yaml.load(new FileInputStream(configFile));
+    projects = (List<String>) result.get("operateProjects");
     return projects;
   }
 }

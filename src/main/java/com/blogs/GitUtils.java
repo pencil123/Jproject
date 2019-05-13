@@ -190,7 +190,7 @@ public class GitUtils {
     try {
       git.branchCreate()
               .setName(branchName)
-              .setStartPoint("origin/" + branchName)
+              .setStartPoint("origin/user/" + branchName)
               .call();
         return true;
     } catch (GitAPIException e) {
@@ -377,7 +377,7 @@ public class GitUtils {
         return false;
       }
       pushResults = this.git.push()
-              .setRefSpecs(new RefSpec("HEAD:refs/for/" + branchName +"%submit"))
+              .setRefSpecs(new RefSpec("HEAD:refs/for/user/" + branchName +"%submit"))
                .call();
     } catch (GitAPIException|IOException e) {
       logger.error(e.getMessage());

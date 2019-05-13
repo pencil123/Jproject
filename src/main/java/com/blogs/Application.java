@@ -143,6 +143,9 @@ public class Application {
   /**
    * 遍历所有工程，拉取相应的分支
    * @param branchName 分支名
+   * @param projectsSource 需要操作的工程列表获取方式
+   *                       1 从数据库读取所有列表
+   *                       2 从配置文件中，获取临时操作列表operateProjects
    * @return
    * @throws GitAPIException
    * @throws IOException
@@ -150,31 +153,45 @@ public class Application {
    * @throws SAXException
    * @throws ParserConfigurationException
    */
-  public boolean checkoutBranch(String branchName)
-      throws GitAPIException, IOException, SQLException, SAXException,
-          ParserConfigurationException {
+  public boolean checkoutBranch(String branchName,int projectsSource)
+      throws GitAPIException, IOException, SQLException{
     String projectName;
-    File projectPath;
     int count = 1;
-    String stringSQL = "select name from publish_projects_list";
-    ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
-    while (proSet.next()) {
-      projectName = proSet.getString("name");
-      projectPath =
-          new File(
-              this.parrentPath.getAbsolutePath()
-                  + System.getProperty("file.separator")
-                  + projectName);
-      logger.info("--------{}:拉取的工程名：",count,projectName);
-      GitUtils objGit = new GitUtils(projectPath);
-      if (!objGit.branchPull(branchName)) {
-        logger.error("工程：{} 拉取失败",projectName);
-        return false;
+    if (1 == projectsSource) {
+      String stringSQL = "select name from publish_projects_list";
+      ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
+      while (proSet.next()) {
+        projectName = proSet.getString("name");
+        logger.info("--------{}:拉取的工程名：",count,projectName);
+        checkoutOneBranch(branchName,projectName);
+        count ++;
       }
-      objGit.getStatus();
-      count ++;
+    } else {
+      List<String> projectsList = Utils.operateProjects();
+      for (String project : projectsList) {
+        logger.info("--------{}:拉取的工程名：",count,project);
+        checkoutOneBranch(branchName,project);
+        count ++;
+      }
     }
+
     System.out.println("true");
+    return true;
+  }
+
+  private boolean checkoutOneBranch(String branchName,String projectName) throws GitAPIException, IOException{
+    File projectPath;
+    projectPath =
+            new File(
+                    this.parrentPath.getAbsolutePath()
+                            + System.getProperty("file.separator")
+                            + projectName);
+    GitUtils objGit = new GitUtils(projectPath);
+    if (!objGit.branchPull(branchName)) {
+      logger.error("工程：{} 拉取失败",projectName);
+      return false;
+    }
+    objGit.getStatus();
     return true;
   }
 
@@ -638,6 +655,9 @@ public class Application {
    * 将publish_projects_list 表中存在newtag的工程,进行Merge操作
    * @param fromBranch 代码源分支
    * @param toBranch 代码目标分支
+   * @param projectsSource 需要操作的工程列表获取方式
+   *                       1 从数据库读取所有列表
+   *                       2 从配置文件中，获取临时操作列表operateProjects
    * @return
    * @throws GitAPIException
    * @throws IOException
@@ -645,21 +665,35 @@ public class Application {
    * @throws SAXException
    * @throws ParserConfigurationException
    */
-  public boolean mergeNewtagBranch(String fromBranch,String toBranch) throws GitAPIException, IOException, SQLException, SAXException, ParserConfigurationException {
-    String stringSQL = "select name,newtag from publish_projects_list where newtag is not null";
+  public boolean mergeNewtagBranch(String fromBranch,String toBranch,int projectsSource)
+          throws GitAPIException, IOException, SQLException, SAXException, ParserConfigurationException {
     File projectPath;
     int count = 1;
     String projectName;
-    ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
-    while (proSet.next()) {
-      projectName = proSet.getString("name");
-      projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
-      System.out.println(count + "工程：" + projectName + " DEV分支Merge到Master");
-      GitUtils objGit = new GitUtils(projectPath);
-      if (objGit.mergeBranch("dev", "master")) {
-        System.out.println("merge sucess");
+    if (1 == projectsSource) {
+      String stringSQL = "select name,newtag from publish_projects_list where newtag is not null";
+      ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
+      while (proSet.next()) {
+        projectName = proSet.getString("name");
+        projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
+        System.out.println(count + "工程：" + projectName + " " + fromBranch + "分支Merge到" + toBranch);
+        GitUtils objGit = new GitUtils(projectPath);
+        if (objGit.mergeBranch(fromBranch,toBranch)) {
+          System.out.println("merge sucess");
+        }
+        count++;
       }
-      count++;
+    } else {
+      List<String> projectsList = Utils.operateProjects();
+      for (String project : projectsList) {
+        projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + project);
+        System.out.println(count + "工程：" + project + " " + fromBranch + "分支Merge到" + toBranch);
+        GitUtils objGit = new GitUtils(projectPath);
+        if (objGit.mergeBranch(fromBranch,toBranch)) {
+          System.out.println("merge sucess");
+        }
+        count++;
+      }
     }
     return true;
   }
@@ -699,6 +733,9 @@ public class Application {
    * 将publish_projects_list 表中存在newtag的工程,Push 相应的分支到远程
    *
    * @param branchName 要push的分支
+   * @param projectsSource 需要操作的工程列表获取方式
+   *                       1 从数据库读取所有列表
+   *                       2 从配置文件中，获取临时操作列表operateProjects
    * @return
    * @throws GitAPIException
    * @throws IOException
@@ -706,22 +743,35 @@ public class Application {
    * @throws SAXException
    * @throws ParserConfigurationException
    */
-  public boolean pushBranch(String branchName) throws GitAPIException, IOException, SQLException, SAXException, ParserConfigurationException {
-    String stringSQL = "select name from publish_projects_list where newtag is not null";
+  public boolean pushBranch(String branchName,int projectsSource) throws GitAPIException, IOException, SQLException {
     File projectPath;
     int count = 1;
     String projectName;
-    String newTag;
-    ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
-    while (proSet.next()) {
-      projectName = proSet.getString("name");
-      System.out.println(count + " push 工程：" + projectName + "的" + branchName + "分支");
-      projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
-      GitUtils objGit = new GitUtils(projectPath);
-      if (objGit.branchPushCommit(branchName)) {
-        System.out.println("push master sucess");
+    if (1 == projectsSource) {
+      String stringSQL = "select name from publish_projects_list where newtag is not null";
+      ResultSet proSet = this.mysqlAPI.executeQuery(stringSQL);
+      while (proSet.next()) {
+        projectName = proSet.getString("name");
+        System.out.println(count + " push 工程：" + projectName + "的" + branchName + "分支");
+        projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + projectName);
+        GitUtils objGit = new GitUtils(projectPath);
+        if (objGit.branchPushCommit(branchName)) {
+          System.out.println("push master sucess");
+        }
+      }
+    } else {
+      List<String> projectsList = Utils.operateProjects();
+      for (String project : projectsList) {
+        projectPath = new File(this.parrentPath.getAbsolutePath() + System.getProperty("file.separator") + project);
+        System.out.println(count + " push 工程：" + project + "的" + branchName + "分支");
+        GitUtils objGit = new GitUtils(projectPath);
+        if (objGit.branchPushCommit(branchName)) {
+          System.out.println("push master sucess");
+        }
+        count++;
       }
     }
+
     return true;
   }
 
