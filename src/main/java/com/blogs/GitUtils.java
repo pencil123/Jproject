@@ -190,7 +190,7 @@ public class GitUtils {
     try {
       git.branchCreate()
               .setName(branchName)
-              .setStartPoint("origin/user/" + branchName)
+              .setStartPoint("origin/" + branchName)
               .call();
         return true;
     } catch (GitAPIException e) {
@@ -207,7 +207,7 @@ public class GitUtils {
    * @param branchName
    * @return
    */
-  public boolean checkoutBranch(String branchName) {
+  private boolean checkoutBranch(String branchName) {
     String currentBranch;
     try {
       currentBranch = this.repository.getBranch();
@@ -309,7 +309,7 @@ public class GitUtils {
     // perform the actual merge, here we disable FastForward to see the
     // actual merge-commit even though the merge is trivial
     //include() the Id of a commit which is merged with the current head
-    String commitMsg = "Merge branch " + fromBranch + " into " + toBranch;
+    String commitMsg = "Merge branch " + fromBranch + " into " + toBranch + "by codes";
     MergeResult merge = this.git.merge()
             .include(mergeBase)
             .setCommit(true)
@@ -377,7 +377,7 @@ public class GitUtils {
         return false;
       }
       pushResults = this.git.push()
-              .setRefSpecs(new RefSpec("HEAD:refs/for/user/" + branchName +"%submit"))
+              .setRefSpecs(new RefSpec("HEAD:refs/for/" + branchName +"%submit"))
                .call();
     } catch (GitAPIException|IOException e) {
       logger.error(e.getMessage());
