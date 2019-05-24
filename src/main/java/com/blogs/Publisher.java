@@ -82,7 +82,7 @@ public class Publisher {
 
 
         // 周一以后的预生产发版操作方法
-        //appObj.fullowPreMasterCreateTag();
+        appObj.fullowPreMasterCreateTag();
 
         //master  merge 到 DEV
         //appObj.mergeNewtagBranch("master","dev");

@@ -95,6 +95,7 @@ public class Application {
     List<String> FrontProjects = Utils.frontProjects();
     List<String> projectsList = Utils.publishProjects();
     for (String projectName : projectsList) {
+      updateOneTags(projectName);
       projectPath =
           new File(
               this.parrentPath.getAbsolutePath()
@@ -586,6 +587,7 @@ public class Application {
                               + System.getProperty("file.separator")
                               + projectName);
       GitUtils objGit = new GitUtils(projectPath);
+      logger.info("project:{} update tag",projectName);
       for (String tag : objGit.getAllTags()) {
         stringSQL =
                 String.format(
@@ -599,6 +601,41 @@ public class Application {
       }
     }
     logger.info("工程所有的tag已更新至数据表project_tags_list 完成");
+    return true;
+  }
+
+  /**
+   * 当个工程更新tag 信息到数据库
+   * @param projectName 工程名
+   * @return
+   * @throws GitAPIException
+   * @throws IOException
+   * @throws SQLException
+   * @throws SAXException
+   * @throws ParserConfigurationException
+   */
+  private boolean updateOneTags(String projectName) throws GitAPIException, IOException, SQLException, SAXException,
+          ParserConfigurationException {
+    File projectPath;
+    String stringSQL;
+    projectPath =
+            new File(
+                    this.parrentPath.getAbsolutePath()
+                            + System.getProperty("file.separator")
+                            + projectName);
+    GitUtils objGit = new GitUtils(projectPath);
+    logger.info("project:{} update tag",projectName);
+    for (String tag : objGit.getAllTags()) {
+      stringSQL =
+              String.format(
+                      "insert into project_tags_list (name,tag_name) values(\"%s\",\"%s\")",
+                      projectName, tag);
+      try {
+        this.mysqlAPI.executeSql(stringSQL);
+      } catch (SQLException e) {
+        continue;
+      }
+    }
     return true;
   }
 
