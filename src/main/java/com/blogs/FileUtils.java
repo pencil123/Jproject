@@ -6,7 +6,7 @@ import ch.qos.logback.core.util.FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static jdk.internal.org.objectweb.asm.commons.GeneratorAdapter.AND;
+//import static jdk.internal.org.objectweb.asm.commons.GeneratorAdapter.AND;
 
 /**
  * @author lyzhang

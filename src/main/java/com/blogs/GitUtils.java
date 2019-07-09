@@ -238,6 +238,7 @@ public class GitUtils {
     }
     //this.git.fetch().setCheckFetchedObjects(true).call()
     PullResult pull = this.git.pull().call();
+    //PullResult pull = this.git.pull().setRebase(true).call();
     if (pull.isSuccessful()) {
       /*System.out.println(pull.getFetchResult(true).call())
       System.out.println(pull.getMergeResult().getConflicts())
@@ -309,11 +310,11 @@ public class GitUtils {
     // perform the actual merge, here we disable FastForward to see the
     // actual merge-commit even though the merge is trivial
     //include() the Id of a commit which is merged with the current head
-    String commitMsg = "Merge branch " + fromBranch + " into " + toBranch + "by codes";
+    String commitMsg = "Merge branch " + fromBranch + " into " + toBranch + " by codes";
     MergeResult merge = this.git.merge()
             .include(mergeBase)
             .setCommit(true)
-            .setFastForward(MergeCommand.FastForwardMode.NO_FF)
+            //.setFastForward(MergeCommand.FastForwardMode.NO_FF)
             //.setSquash(false)
             .setMessage(commitMsg)
             .call();
