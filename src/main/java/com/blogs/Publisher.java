@@ -83,7 +83,7 @@ public class Publisher {
         //appObj.pushBranch("M3707",2);
 
       //更新工程的tags列表到数据库 project_tags_list
-      //appObj.updateTags();
+      appObj.updateTags();
 
 
         // 周一以后的预生产发版操作方法

@@ -95,7 +95,6 @@ public class Application {
     List<String> FrontProjects = Utils.frontProjects();
     List<String> projectsList = Utils.publishProjects();
     for (String projectName : projectsList) {
-      updateOneTags(projectName);
       projectPath =
           new File(
               this.parrentPath.getAbsolutePath()
@@ -104,6 +103,7 @@ public class Application {
       logger.info("预生产发版的工程:{}和version",projectName);
       GitUtils objGit = new GitUtils(projectPath);
       objGit.branchPull("master");
+      updateOneTags(projectName);
       if (FrontProjects.contains(projectName)) {
         pomFile =
             new File(
